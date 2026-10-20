@@ -1,0 +1,46 @@
+name: inzeedo_erp_distributor
+description: "Inzeedo Distributor app — catalog, orders, shops, invoices and deliveries for distributors."
+publish_to: "none"
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.9
+  go_router: ^17.4.0
+  flutter_riverpod: ^2.6.1
+  shared_preferences: ^2.5.5
+  toastification: ^3.2.0
+  google_fonts: ^8.2.1
+  dio: ^5.11.0
+  lucide_icons_flutter: ^3.1.15
+  shimmer: ^3.0.0
+  flutter_animate: ^4.5.2
+  intl: 0.20.2
+  url_launcher: ^6.3.2
+  package_info_plus: ^10.2.1
+  connectivity_plus: ^6.0.5
+  path_provider: ^2.1.6
+  share_plus: ^13.3.0
+  flutter_svg: ^2.2.0
+  esc_pos_utils: ^1.1.0
+  esc_pos_printer: ^4.1.0
+  flutter_bluetooth_serial_plus: ^0.5.6
+  permission_handler: ^11.4.0
+  open_filex: ^4.5.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/svg/
