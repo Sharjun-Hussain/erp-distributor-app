@@ -117,8 +117,15 @@ class CartLine {
   /// Stable key so the same product with different variants are separate lines.
   String get key => variant == null ? product.id : '${product.id}:${variant!.id}';
 
-  String get displayName =>
-      variant == null ? product.name : '${product.name} · ${variant!.name}';
+  String get displayName {
+    if (variant == null) return product.name;
+    // If the product has only 1 variant or the variant name is "Default", hide the variant name
+    if (product.variants.length <= 1 ||
+        variant!.name.trim().toLowerCase() == 'default') {
+      return product.name;
+    }
+    return '${product.name} · ${variant!.name}';
+  }
 
   double get gross => unitPrice * qty;
 

@@ -231,7 +231,9 @@ Future<void> _showPriceQtySheet(
                 ),
                 const SizedBox(height: 14),
                 Text(
-                  variant == null
+                  (variant == null ||
+                          product.variants.length <= 1 ||
+                          variant.name.trim().toLowerCase() == 'default')
                       ? product.name
                       : '${product.name} · ${variant.name}',
                   maxLines: 1,
