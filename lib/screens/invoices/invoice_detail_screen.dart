@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../models/finance.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/data_providers.dart';
+import '../../services/invoice_print_service.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/formatters.dart';
 import '../../utils/status_colors.dart';
@@ -163,9 +164,25 @@ class InvoiceDetailScreen extends ConsumerWidget {
                 showBack: true,
                 onBack: handleBack,
                 actions: [
+                  IconButton(
+                    icon: Icon(
+                      LucideIcons.download,
+                      color: theme.textMain,
+                      size: 19,
+                    ),
+                    tooltip: 'Download A4 PDF',
+                    onPressed: () {
+                      ref.read(invoicePrintServiceProvider).handleA4Print(context, inv);
+                    },
+                    style: IconButton.styleFrom(
+                      backgroundColor: theme.surfaceColor,
+                      padding: const EdgeInsets.all(8),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   Container(
                     margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
                       color: statusColor.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(10),
@@ -262,8 +279,18 @@ class InvoiceDetailScreen extends ConsumerWidget {
                 ),
               ),
 
-              // Bottom Action Bar: Print, Share, SMS / WhatsApp Share
-              _buildBottomActionBar(context, theme, inv, distName, distPhone),
+              // Bottom Action Bar: Thermal, A4 Print, Share, SMS
+              _buildBottomActionBar(
+                context,
+                ref,
+                theme,
+                inv,
+                companyName,
+                companyAddress,
+                companyPhone,
+                distName,
+                distPhone,
+              ),
             ],
           ),
         ),
@@ -903,17 +930,21 @@ class InvoiceDetailScreen extends ConsumerWidget {
   }
 
   // ==========================================
-  // BOTTOM ACTION BAR: PRINT, SHARE, SMS
+  // BOTTOM ACTION BAR: THERMAL, A4 PRINT, SHARE, SMS
   // ==========================================
   Widget _buildBottomActionBar(
     BuildContext context,
+    WidgetRef ref,
     ThemeData theme,
     Invoice inv,
+    String companyName,
+    String companyAddress,
+    String companyPhone,
     String distName,
     String distPhone,
   ) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
@@ -928,24 +959,62 @@ class InvoiceDetailScreen extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          // Print Action
+          // 1. Thermal Print Action
           Expanded(
             child: Material(
               color: Colors.transparent,
               child: InkWell(
                 onTap: () {
-                  toastification.show(
-                    context: context,
-                    type: ToastificationType.info,
-                    style: ToastificationStyle.flatColored,
-                    title: const Text('Bluetooth Printer'),
-                    description: const Text('Searching for paired POS mobile printer...'),
-                    autoCloseDuration: const Duration(seconds: 3),
-                  );
+                  ref.read(invoicePrintServiceProvider).handleThermalPrint(
+                        context: context,
+                        invoice: inv,
+                        companyName: companyName,
+                        companyAddress: companyAddress,
+                        companyPhone: companyPhone,
+                        distName: distName,
+                        distPhone: distPhone,
+                      );
                 },
                 borderRadius: BorderRadius.circular(14),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: theme.surfaceColor,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: theme.glassBorder),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(LucideIcons.printer, size: 18, color: AppColors.brand),
+                      const SizedBox(height: 3),
+                      Text(
+                        'Thermal',
+                        style: GoogleFonts.inter(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          color: theme.textMain,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+
+          // 2. A4 Print / Download Action
+          Expanded(
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  ref.read(invoicePrintServiceProvider).handleA4Print(context, inv);
+                },
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
@@ -955,21 +1024,21 @@ class InvoiceDetailScreen extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(14),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF2563EB).withValues(alpha: 0.3),
-                        blurRadius: 10,
+                        color: const Color(0xFF2563EB).withValues(alpha: 0.28),
+                        blurRadius: 8,
                         offset: const Offset(0, 3),
                       ),
                     ],
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(LucideIcons.printer, size: 17, color: Colors.white),
-                      const SizedBox(width: 8),
+                      const Icon(LucideIcons.fileText, size: 18, color: Colors.white),
+                      const SizedBox(height: 3),
                       Text(
-                        'Print',
+                        'A4 Print',
                         style: GoogleFonts.inter(
-                          fontSize: 13.5,
+                          fontSize: 11.5,
                           fontWeight: FontWeight.w800,
                           color: Colors.white,
                         ),
@@ -982,7 +1051,7 @@ class InvoiceDetailScreen extends ConsumerWidget {
           ),
           const SizedBox(width: 8),
 
-          // Share Action
+          // 3. Share Action
           Expanded(
             child: Material(
               color: Colors.transparent,
@@ -997,21 +1066,21 @@ class InvoiceDetailScreen extends ConsumerWidget {
                 },
                 borderRadius: BorderRadius.circular(14),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
                   decoration: BoxDecoration(
                     color: theme.surfaceColor,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(color: theme.glassBorder),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(LucideIcons.share2, size: 16, color: theme.textMain),
-                      const SizedBox(width: 8),
+                      Icon(LucideIcons.share2, size: 18, color: theme.textMain),
+                      const SizedBox(height: 3),
                       Text(
                         'Share',
                         style: GoogleFonts.inter(
-                          fontSize: 13.5,
+                          fontSize: 11.5,
                           fontWeight: FontWeight.w700,
                           color: theme.textMain,
                         ),
@@ -1024,7 +1093,7 @@ class InvoiceDetailScreen extends ConsumerWidget {
           ),
           const SizedBox(width: 8),
 
-          // SMS Action
+          // 4. SMS Action
           Expanded(
             child: Material(
               color: Colors.transparent,
@@ -1052,21 +1121,21 @@ class InvoiceDetailScreen extends ConsumerWidget {
                 },
                 borderRadius: BorderRadius.circular(14),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
                   decoration: BoxDecoration(
                     color: theme.surfaceColor,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(color: theme.glassBorder),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(LucideIcons.messageSquare, size: 16, color: theme.textMain),
-                      const SizedBox(width: 8),
+                      Icon(LucideIcons.messageSquare, size: 18, color: theme.textMain),
+                      const SizedBox(height: 3),
                       Text(
                         'SMS',
                         style: GoogleFonts.inter(
-                          fontSize: 13.5,
+                          fontSize: 11.5,
                           fontWeight: FontWeight.w700,
                           color: theme.textMain,
                         ),

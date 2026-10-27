@@ -230,6 +230,29 @@ class ApiClient {
   Future<dynamic> delete(String path) =>
       _send(() => _dio.delete<dynamic>(path));
 
+  /// Downloads binary bytes (e.g. PDF generation endpoints) with active auth headers.
+  Future<List<int>> downloadBytes(String path, {Map<String, dynamic>? query}) async {
+    try {
+      final response = await _dio.get<List<dynamic>>(
+        path,
+        queryParameters: query,
+        options: Options(
+          responseType: ResponseType.bytes,
+          headers: {'Accept': 'application/pdf'},
+        ),
+      );
+      final data = response.data;
+      if (data is List<int>) {
+        return data;
+      } else if (data is List) {
+        return data.cast<int>();
+      }
+      throw const ApiException('Invalid binary response received.');
+    } on DioException catch (e) {
+      throw _mapError(e);
+    }
+  }
+
   Future<dynamic> _send(Future<Response<dynamic>> Function() run) async {
     try {
       final res = await run();

@@ -12,6 +12,7 @@ import '../../services/update_service.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/common.dart';
+import '../settings/printer_settings_sheet.dart';
 
 class MoreScreen extends ConsumerWidget {
   const MoreScreen({super.key});
@@ -127,6 +128,22 @@ class MoreScreen extends ConsumerWidget {
                             title: 'Check for Updates',
                             subtitle: 'Check for the latest distributor app release',
                             onTap: () => UpdateService.manualCheckForUpdates(context),
+                          ),
+                          _divider(theme),
+                          _menuTile(
+                            theme,
+                            icon: LucideIcons.printer,
+                            iconColor: const Color(0xFF6366F1),
+                            title: 'Printer Setup',
+                            subtitle: 'Bluetooth & LAN thermal receipt settings',
+                            onTap: () {
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                backgroundColor: Colors.transparent,
+                                builder: (_) => const PrinterSettingsSheet(),
+                              );
+                            },
                           ),
                           _divider(theme),
                           _menuTile(
