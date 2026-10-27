@@ -5,9 +5,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../models/catalog.dart';
+import '../../models/shop.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/data_providers.dart';
 import '../../providers/repository_providers.dart';
+import '../../services/api_client.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/common.dart';
@@ -42,9 +44,195 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     super.dispose();
   }
 
+  Future<Shop?> _pickShop(BuildContext context) async {
+    final searchController = TextEditingController();
+    try {
+      return await showModalBottomSheet<Shop>(
+        context: context,
+        isScrollControlled: true,
+        useRootNavigator: true,
+        backgroundColor: Colors.transparent,
+        builder: (ctx) {
+          final theme = Theme.of(ctx);
+          String query = '';
+          return StatefulBuilder(
+            builder: (context, setSB) {
+              final shopsAsync = ref.watch(shopsProvider);
+              return Container(
+                height: MediaQuery.of(ctx).size.height * 0.75,
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                decoration: BoxDecoration(
+                  color: theme.cardColor,
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(28)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: theme.surfaceMutedColor,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Select Target Shop',
+                      style: GoogleFonts.inter(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: theme.textMain,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Choose the client shop this order will be delivered to.',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        color: theme.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    SearchField(
+                      controller: searchController,
+                      hint: 'Search shops by name, address...',
+                      onChanged: (v) =>
+                          setSB(() => query = v.trim().toLowerCase()),
+                    ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: shopsAsync.when(
+                      data: (shops) {
+                        final filtered = query.isEmpty
+                            ? shops
+                            : shops
+                                .where((s) =>
+                                    s.name.toLowerCase().contains(query) ||
+                                    s.address.toLowerCase().contains(query))
+                                .toList();
+
+                        if (filtered.isEmpty) {
+                          return Center(
+                            child: Text(
+                              'No shops found',
+                              style:
+                                  GoogleFonts.inter(color: theme.textSecondary),
+                            ),
+                          );
+                        }
+
+                        return ListView.separated(
+                          itemCount: filtered.length,
+                          separatorBuilder: (_, _) => const SizedBox(height: 8),
+                          itemBuilder: (context, i) {
+                            final shop = filtered[i];
+                            return Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () => Navigator.of(ctx).pop(shop),
+                                borderRadius: BorderRadius.circular(14),
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: theme.surfaceColor,
+                                    borderRadius: BorderRadius.circular(14),
+                                    border:
+                                        Border.all(color: theme.glassBorder),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 20,
+                                        backgroundColor: AppColors.brand
+                                            .withValues(alpha: 0.12),
+                                        child: Text(
+                                          shop.name.characters.first
+                                              .toUpperCase(),
+                                          style: GoogleFonts.inter(
+                                            fontWeight: FontWeight.w800,
+                                            color: AppColors.brand,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              shop.name,
+                                              style: GoogleFonts.inter(
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 14.5,
+                                                color: theme.textMain,
+                                              ),
+                                            ),
+                                            if (shop.address.isNotEmpty) ...[
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                shop.address,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 12,
+                                                  color: theme.textSecondary,
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                      const Icon(
+                                        LucideIcons.chevronRight,
+                                        size: 16,
+                                        color: AppColors.brand,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                      loading: () => const Center(
+                        child: CircularProgressIndicator(),
+                      ),
+                      error: (e, _) => Center(
+                        child: Text('Failed to load shops: $e'),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+    } finally {
+      searchController.dispose();
+    }
+  }
+
   Future<void> _submit() async {
     final cart = ref.read(cartProvider);
     if (cart.lines.isEmpty || _submitting) return;
+
+    // Ensure target shop is selected
+    Shop? targetShop = cart.shop;
+    if (targetShop == null) {
+      targetShop = await _pickShop(context);
+      if (targetShop == null) {
+        return; // User cancelled shop selection
+      }
+      ref.read(cartProvider.notifier).setShop(targetShop);
+    }
 
     setState(() => _submitting = true);
     try {
@@ -52,7 +240,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       switch (cart.purpose) {
         case CartPurpose.shopOrder:
           await ordersRepo.createShopOrder(
-            cart.shop!,
+            targetShop,
             cart.lines,
             discount: cart.billDiscount,
             notes: _notesController.text.trim(),
@@ -63,14 +251,14 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               backgroundColor: AppColors.success,
-              content: Text('Shop order collected'),
+              content: Text('Shop order collected successfully'),
             ),
           );
           context.go('/orders?segment=shop');
           break;
         case CartPurpose.directSale:
           final order = await ordersRepo.createDirectSale(
-            cart.shop!,
+            targetShop,
             cart.lines,
             discount: cart.billDiscount,
             notes: _notesController.text.trim(),
@@ -82,18 +270,22 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               backgroundColor: AppColors.success,
-              content: Text('Invoice generated'),
+              content: Text('Invoice generated successfully'),
             ),
           );
           context.go('/orders/shop/${order.id}');
           break;
       }
-    } catch (_) {
+    } catch (e, stack) {
+      debugPrint('[Cart] Submit error: $e\n$stack');
       if (mounted) {
+        final message = e is ApiException
+            ? e.message
+            : 'Could not submit: ${e.toString().replaceAll("Exception: ", "")}';
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             backgroundColor: AppColors.danger,
-            content: Text('Could not submit. Please try again.'),
+            content: Text(message),
           ),
         );
       }
@@ -443,91 +635,88 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                 ],
               ),
 
-              // Shop Banner
-              if (cart.shop != null)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 2, 16, 10),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.brand.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: AppColors.brand.withValues(alpha: 0.2),
+              // Shop Selector (Compact One-Button)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () async {
+                      final picked = await _pickShop(context);
+                      if (picked != null) {
+                        ref.read(cartProvider.notifier).setShop(picked);
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 9,
                       ),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppColors.brand.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
+                      decoration: BoxDecoration(
+                        color: cart.shop != null
+                            ? AppColors.brand.withValues(alpha: 0.08)
+                            : Colors.amber.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: cart.shop != null
+                              ? AppColors.brand.withValues(alpha: 0.25)
+                              : Colors.amber.withValues(alpha: 0.35),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
                             LucideIcons.store,
-                            size: 18,
-                            color: AppColors.brand,
+                            size: 16,
+                            color: cart.shop != null
+                                ? AppColors.brand
+                                : (Colors.amber[700] ?? Colors.amber),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                cart.shop!.name,
-                                style: GoogleFonts.inter(
-                                  fontSize: 14.5,
-                                  fontWeight: FontWeight.w800,
-                                  color: theme.textMain,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              cart.shop != null
+                                  ? cart.shop!.name
+                                  : 'Select Client Shop',
+                              style: GoogleFonts.inter(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                                color: cart.shop != null
+                                    ? theme.textMain
+                                    : (Colors.amber[700] ?? Colors.amber),
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                cart.purpose == CartPurpose.directSale
-                                    ? 'Direct Sale • Immediate Invoice'
-                                    : 'Shop Order • Warehouse Dispatch',
-                                style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.brand,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.brand.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            cart.purpose == CartPurpose.directSale
-                                ? 'DIRECT'
-                                : 'ORDER',
-                            style: GoogleFonts.inter(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w900,
-                              color: AppColors.brand,
-                              letterSpacing: 0.6,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 8),
+                          Text(
+                            cart.shop != null ? 'Change' : 'Select',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: cart.shop != null
+                                  ? AppColors.brand
+                                  : (Colors.amber[700] ?? Colors.amber),
+                            ),
+                          ),
+                          const SizedBox(width: 2),
+                          Icon(
+                            LucideIcons.chevronRight,
+                            size: 14,
+                            color: cart.shop != null
+                                ? AppColors.brand
+                                : (Colors.amber[700] ?? Colors.amber),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
+              ),
 
               Expanded(
                 child: cart.lines.isEmpty

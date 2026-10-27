@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:toastification/toastification.dart';
 
@@ -74,6 +75,206 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         _error = authError;
       });
     }
+  }
+
+  Future<void> _showForgotPasswordDialog() async {
+    final emailCtrl = TextEditingController(text: _emailController.text.trim());
+    bool loading = false;
+    String? localError;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useRootNavigator: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+        return StatefulBuilder(
+          builder: (modalCtx, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(modalCtx).viewInsets.bottom,
+              ),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                decoration: BoxDecoration(
+                  color: theme.cardColor,
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(28)),
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: theme.surfaceMutedColor,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Forgot Password',
+                        style: GoogleFonts.inter(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: theme.textMain,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Enter your registered email address to receive a password reset link.',
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          color: theme.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      if (localError != null) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Colors.red.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Text(
+                            localError!,
+                            style: GoogleFonts.inter(
+                              fontSize: 12.5,
+                              color: Colors.redAccent,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                      ],
+                      Text(
+                        'Email Address',
+                        style: GoogleFonts.inter(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: theme.textMain,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: emailCtrl,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: InputDecoration(
+                          hintText: 'distributor@example.com',
+                          prefixIcon: const Icon(LucideIcons.mail, size: 16),
+                          filled: true,
+                          fillColor: theme.surfaceColor,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: theme.glassBorder),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: theme.glassBorder),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: AppColors.brand,
+                              width: 1.4,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 22),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: FilledButton(
+                          onPressed: loading
+                              ? null
+                              : () async {
+                                  final email = emailCtrl.text.trim();
+                                  if (email.isEmpty || !email.contains('@')) {
+                                    setModalState(() => localError =
+                                        'Please enter a valid email address');
+                                    return;
+                                  }
+
+                                  setModalState(() {
+                                    loading = true;
+                                    localError = null;
+                                  });
+
+                                  try {
+                                    final msg = await ref
+                                        .read(authProvider.notifier)
+                                        .forgotPassword(email);
+                                    if (!modalCtx.mounted || !mounted) return;
+                                    Navigator.of(modalCtx).pop();
+
+                                    toastification.show(
+                                      context: context,
+                                      title: const Text('Reset Link Sent'),
+                                      description: Text(msg),
+                                      type: ToastificationType.success,
+                                      style: ToastificationStyle.flatColored,
+                                      autoCloseDuration:
+                                          const Duration(seconds: 4),
+                                    );
+                                  } catch (err) {
+                                    setModalState(() {
+                                      loading = false;
+                                      localError = err
+                                          .toString()
+                                          .replaceAll('Exception: ', '');
+                                    });
+                                  }
+                                },
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.brand,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: loading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Text(
+                                  'Send Reset Link',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    emailCtrl.dispose();
   }
 
   Widget _buildServerPill({
@@ -253,6 +454,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   controller: _passwordController,
                   isPassword: true,
                   disabled: _isPending,
+                ),
+
+                const SizedBox(height: 6),
+
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: _isPending ? null : _showForgotPasswordDialog,
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 4,
+                      ),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Text(
+                      'Forgot password?',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.brand,
+                      ),
+                    ),
+                  ),
                 ),
 
                 if (_error.isNotEmpty) ...[

@@ -74,6 +74,20 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    await _repository.changePassword(
+      currentPassword: currentPassword,
+      newPassword: newPassword,
+    );
+  }
+
+  Future<String> forgotPassword(String email) async {
+    return await _repository.forgotPassword(email);
+  }
+
   Future<void> logout() async {
     await _repository.logout(state.user?.id);
     state = const AuthState(status: AuthStatus.unauthenticated);

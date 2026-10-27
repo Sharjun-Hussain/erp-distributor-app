@@ -8,6 +8,11 @@ abstract class AuthRepository {
   Future<DistributorUser> login(String email, String password);
   Future<void> logout(String? token);
   Future<DistributorUser> me();
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  });
+  Future<String> forgotPassword(String email);
   Future<String?> readToken();
   Future<void> writeToken(String token);
   Future<void> clearToken();
@@ -29,6 +34,20 @@ class MockAuthRepository implements AuthRepository {
     await prefs.setString(
         _tokenKey, 'mock-token-${DateTime.now().millisecondsSinceEpoch}');
     return MockData.distributorUser;
+  }
+
+  @override
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 400));
+  }
+
+  @override
+  Future<String> forgotPassword(String email) async {
+    await Future.delayed(const Duration(milliseconds: 400));
+    return 'If an account exists with this email, a reset link has been sent.';
   }
 
   @override
@@ -111,6 +130,40 @@ class ApiAuthRepository implements AuthRepository {
         throw const AuthException('Could not load your profile.');
       }
       return DistributorUser.fromJson(userJson);
+    } on ApiException catch (e) {
+      throw AuthException(e.message);
+    }
+  }
+
+  @override
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      await _client.post(
+        '/dapp/change-password',
+        data: {
+          'current_password': currentPassword,
+          'new_password': newPassword,
+        },
+      );
+    } on ApiException catch (e) {
+      throw AuthException(e.message);
+    }
+  }
+
+  @override
+  Future<String> forgotPassword(String email) async {
+    try {
+      final res = await _client.post(
+        '/auth/forgot-password',
+        data: {'email': email.trim()},
+      );
+      if (res is Map && res['message'] is String) {
+        return res['message'] as String;
+      }
+      return 'If an account exists with this email, a reset link has been sent.';
     } on ApiException catch (e) {
       throw AuthException(e.message);
     }

@@ -65,6 +65,14 @@ class CartState {
 class CartNotifier extends StateNotifier<CartState> {
   CartNotifier() : super(const CartState());
 
+  void setShop(Shop shop) {
+    state = state.copyWith(shop: shop);
+  }
+
+  void setPurpose(CartPurpose purpose) {
+    state = state.copyWith(purpose: purpose);
+  }
+
   void startShopOrder(Shop shop) {
     state = CartState(purpose: CartPurpose.shopOrder, shop: shop);
   }
