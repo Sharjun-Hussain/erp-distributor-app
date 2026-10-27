@@ -39,6 +39,14 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
     });
   }
 
+  Future<void> _handleRefresh() async {
+    try {
+      ref.invalidate(priceListProvider);
+      ref.invalidate(productsProvider);
+      await ref.read(productsProvider.future);
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -106,15 +114,31 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
               child: products.when(
                 data: (list) {
                   if (list.isEmpty) {
-                    return const EmptyState(
-                      icon: Icons.search_off_rounded,
-                      title: 'No products found',
-                      subtitle: 'Try a different search term.',
+                    return RefreshIndicator(
+                      color: AppColors.brand,
+                      backgroundColor: theme.surfaceColor,
+                      onRefresh: _handleRefresh,
+                      child: ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: [
+                          SizedBox(
+                            height: MediaQuery.of(context).size.height * 0.45,
+                            child: const EmptyState(
+                              icon: Icons.search_off_rounded,
+                              title: 'No products found',
+                              subtitle: 'Pull down to refresh or try a different search.',
+                            ),
+                          ),
+                        ],
+                      ),
                     );
                   }
                   return RefreshIndicator(
-                    onRefresh: () async => ref.invalidate(productsProvider),
+                    color: AppColors.brand,
+                    backgroundColor: theme.surfaceColor,
+                    onRefresh: _handleRefresh,
                     child: ListView.separated(
+                      physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
                       itemCount: list.length,
                       separatorBuilder: (_, _) => const SizedBox(height: 10),
@@ -124,10 +148,23 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
                   );
                 },
                 loading: () => const LoadingShimmer(),
-                error: (_, _) => const EmptyState(
-                  icon: Icons.error_outline_rounded,
-                  title: 'Could not load catalog',
-                  subtitle: 'Pull down to retry.',
+                error: (err, _) => RefreshIndicator(
+                  color: AppColors.brand,
+                  backgroundColor: theme.surfaceColor,
+                  onRefresh: _handleRefresh,
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: [
+                      SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.45,
+                        child: const EmptyState(
+                          icon: Icons.error_outline_rounded,
+                          title: 'Could not load catalog',
+                          subtitle: 'Pull down to retry.',
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -138,7 +175,7 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
           ? null
           : SafeArea(
               child: GestureDetector(
-                onTap: () => context.go('/catalog/cart'),
+                onTap: () => context.push('/catalog/cart'),
                 child: Container(
                   margin: const EdgeInsets.all(12),
                   padding: const EdgeInsets.symmetric(
@@ -198,7 +235,7 @@ class _ProductTile extends ConsumerWidget {
 
     return AppCard(
       padding: const EdgeInsets.all(12),
-      onTap: () => context.go('/catalog/product/${product.id}'),
+      onTap: () => context.push('/catalog/product/${product.id}'),
       child: Row(
         children: [
           ProductAvatar(

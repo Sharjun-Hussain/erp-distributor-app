@@ -109,15 +109,30 @@ class _ShopFormScreenState extends ConsumerState<ShopFormScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Scaffold(
-      backgroundColor: theme.bgColor,
-      body: SafeArea(
-        child: Column(
-          children: [
-            AppTopBar(
-              title: _isEdit ? 'Edit Shop' : 'Add Shop',
-              showBack: true,
-              onBack: () => context.pop(),
+    void handleBack() {
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go('/shops');
+      }
+    }
+
+    final canPop = context.canPop();
+
+    return PopScope(
+      canPop: canPop,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) context.go('/shops');
+      },
+      child: Scaffold(
+        backgroundColor: theme.bgColor,
+        body: SafeArea(
+          child: Column(
+            children: [
+              AppTopBar(
+                title: _isEdit ? 'Edit Shop' : 'Add Shop',
+                showBack: true,
+                onBack: handleBack,
             ),
             Expanded(
               child: Form(
@@ -185,8 +200,9 @@ class _ShopFormScreenState extends ConsumerState<ShopFormScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _field(
     String label,

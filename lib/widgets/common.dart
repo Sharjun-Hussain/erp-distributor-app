@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../theme/app_colors.dart';
@@ -55,7 +56,14 @@ class AppBackButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      onPressed: onPressed ?? () => Navigator.of(context).maybePop(),
+      onPressed: onPressed ??
+          () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              Navigator.of(context).maybePop();
+            }
+          },
       icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
       tooltip: 'Back',
       visualDensity: VisualDensity.compact,
@@ -282,13 +290,13 @@ class PrimaryButton extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (icon != null) ...[
-                Icon(icon, size: 18, color: Colors.white),
+                Icon(icon, size: 20, color: Colors.white),
                 const SizedBox(width: 8),
               ],
               Text(
                 label,
                 style: GoogleFonts.inter(
-                  fontSize: 14,
+                  fontSize: 15,
                   fontWeight: FontWeight.w700,
                   color: Colors.white,
                 ),
@@ -301,8 +309,8 @@ class PrimaryButton extends StatelessWidget {
       style: FilledButton.styleFrom(
         backgroundColor: AppColors.brand,
         disabledBackgroundColor: AppColors.brand.withValues(alpha: 0.4),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
       child: child,
     );

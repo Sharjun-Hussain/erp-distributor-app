@@ -25,16 +25,31 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
     final theme = Theme.of(context);
     final invoices = ref.watch(invoicesProvider);
 
-    return Scaffold(
-      backgroundColor: theme.bgColor,
-      body: SafeArea(
-        child: Column(
-          children: [
-            AppTopBar(
-              title: 'Invoices',
-              showBack: true,
-              onBack: () => context.go('/more'),
-            ),
+    void handleBack() {
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go('/more');
+      }
+    }
+
+    final canPop = context.canPop();
+
+    return PopScope(
+      canPop: canPop,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) context.go('/more');
+      },
+      child: Scaffold(
+        backgroundColor: theme.bgColor,
+        body: SafeArea(
+          child: Column(
+            children: [
+              AppTopBar(
+                title: 'Invoices',
+                showBack: true,
+                onBack: handleBack,
+              ),
             SizedBox(
               height: 44,
               child: ListView(
@@ -154,8 +169,9 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _filterChip(InvoiceStatus? status, String label) {
     final selected = _filter == status;

@@ -237,8 +237,8 @@ Future<void> _showPriceQtySheet(
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.inter(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
                     color: theme.textMain,
                   ),
                 ),
@@ -246,8 +246,8 @@ Future<void> _showPriceQtySheet(
                 Text(
                   '${F.money(lineTotal)}  •  ${product.unit}',
                   style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
                     color: AppColors.brand,
                   ),
                 ),
@@ -281,10 +281,14 @@ Future<void> _showPriceQtySheet(
                     Expanded(
                       child: TextButton(
                         onPressed: () => Navigator.of(ctx).pop(),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
                         child: Text(
                           'Cancel',
                           style: GoogleFonts.inter(
-                            fontSize: 15,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
                             color: theme.textSecondary,
                           ),
                         ),
@@ -337,36 +341,38 @@ class _FieldBox extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         decoration: BoxDecoration(
           color: active
-              ? AppColors.brand.withValues(alpha: 0.08)
+              ? AppColors.brand.withValues(alpha: 0.1)
               : theme.surfaceColor,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: active ? AppColors.brand : theme.surfaceMutedColor,
-            width: active ? 1.6 : 1,
+            width: active ? 2.0 : 1,
           ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              label,
+              label.toUpperCase(),
               style: GoogleFonts.inter(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: theme.textSecondary,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.8,
+                color: active ? AppColors.brand : theme.textSecondary,
               ),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 4),
             Text(
               value,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.inter(
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
+                fontSize: 32,
+                fontWeight: FontWeight.w900,
                 color: active ? AppColors.brand : theme.textMain,
               ),
             ),
@@ -386,26 +392,30 @@ class _Numpad extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     Widget btn(String label, {Color? color, IconData? icon}) => Expanded(
-          child: GestureDetector(
-            onTap: () => onKey(label),
-            child: Container(
-              margin: const EdgeInsets.all(5),
-              decoration: BoxDecoration(
-                color: color ?? theme.surfaceColor,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: theme.glassBorder),
-              ),
-              child: Center(
-                child: icon != null
-                    ? Icon(icon, size: 22, color: theme.textMain)
-                    : Text(
-                        label,
-                        style: GoogleFonts.inter(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                          color: theme.textMain,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => onKey(label),
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                margin: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: color ?? theme.surfaceColor,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: theme.glassBorder),
+                ),
+                child: Center(
+                  child: icon != null
+                      ? Icon(icon, size: 28, color: theme.textMain)
+                      : Text(
+                          label,
+                          style: GoogleFonts.inter(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w800,
+                            color: theme.textMain,
+                          ),
                         ),
-                      ),
+                ),
               ),
             ),
           ),
@@ -420,7 +430,7 @@ class _Numpad extends StatelessWidget {
         row([btn('4'), btn('5'), btn('6')]),
         row([btn('1'), btn('2'), btn('3')]),
         row([
-          btn('C', color: AppColors.warning.withValues(alpha: 0.12)),
+          btn('C', color: AppColors.warning.withValues(alpha: 0.15)),
           btn('0'),
           btn('<', icon: LucideIcons.delete),
         ]),

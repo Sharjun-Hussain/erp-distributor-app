@@ -34,16 +34,31 @@ class NewShopOrderScreen extends ConsumerWidget {
       context.go('/catalog');
     }
 
-    return Scaffold(
-      backgroundColor: theme.bgColor,
-      body: SafeArea(
-        child: Column(
-          children: [
-            AppTopBar(
-              title: isDirect ? 'Direct Sale' : 'Collect Order',
-              showBack: true,
-              onBack: () => context.go('/orders'),
-            ),
+    void handleBack() {
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go('/orders');
+      }
+    }
+
+    final canPop = context.canPop();
+
+    return PopScope(
+      canPop: canPop,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) context.go('/orders');
+      },
+      child: Scaffold(
+        backgroundColor: theme.bgColor,
+        body: SafeArea(
+          child: Column(
+            children: [
+              AppTopBar(
+                title: isDirect ? 'Direct Sale' : 'Collect Order',
+                showBack: true,
+                onBack: handleBack,
+              ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               child: AppCard(
@@ -149,6 +164,7 @@ class NewShopOrderScreen extends ConsumerWidget {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

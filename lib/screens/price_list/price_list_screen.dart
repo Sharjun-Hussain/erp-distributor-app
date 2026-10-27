@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -83,14 +84,30 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
     final theme = Theme.of(context);
     final productsAsync = ref.watch(productsProvider);
 
-    return Scaffold(
-      backgroundColor: theme.bgColor,
-      body: SafeArea(
-        child: Column(
-          children: [
-            AppTopBar(
-              title: 'Price List',
-              showBack: true,
+    void handleBack() {
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go('/more');
+      }
+    }
+
+    final canPop = context.canPop();
+
+    return PopScope(
+      canPop: canPop,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) context.go('/more');
+      },
+      child: Scaffold(
+        backgroundColor: theme.bgColor,
+        body: SafeArea(
+          child: Column(
+            children: [
+              AppTopBar(
+                title: 'Price List',
+                showBack: true,
+                onBack: handleBack,
               actions: [
                 if (_dirty.isNotEmpty)
                   TextButton(
@@ -175,8 +192,9 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   static String _trim(double v) =>
       v == v.roundToDouble() ? v.toInt().toString() : v.toString();

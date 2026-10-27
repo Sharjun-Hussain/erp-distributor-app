@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../models/catalog.dart';
@@ -37,30 +38,54 @@ class ProductDetailScreen extends ConsumerWidget {
             ? product.sellingPrice
             : product.distributorPrice);
 
+    void handleBack() {
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go('/catalog');
+      }
+    }
+
+    final canPop = context.canPop();
+
     if (product == null) {
-      return Scaffold(
-        backgroundColor: theme.bgColor,
-        appBar: AppBar(
-          title: const Text('Product'),
-          leading: const AppBackButton(),
-        ),
-        body: const EmptyState(
-          icon: Icons.search_off_rounded,
-          title: 'Product not found',
-          subtitle: 'It may have been removed.',
+      return PopScope(
+        canPop: canPop,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) context.go('/catalog');
+        },
+        child: Scaffold(
+          backgroundColor: theme.bgColor,
+          appBar: AppBar(
+            title: const Text('Product'),
+            leading: AppBackButton(onPressed: handleBack),
+          ),
+          body: const EmptyState(
+            icon: Icons.search_off_rounded,
+            title: 'Product not found',
+            subtitle: 'It may have been removed.',
+          ),
         ),
       );
     }
 
-    return Scaffold(
-      backgroundColor: theme.bgColor,
-      body: SafeArea(
-        child: Column(
-          children: [
-            const AppTopBar(
-              title: 'Product',
-              showBack: true,
-            ),
+    return PopScope(
+      canPop: canPop,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          context.go('/catalog');
+        }
+      },
+      child: Scaffold(
+        backgroundColor: theme.bgColor,
+        body: SafeArea(
+          child: Column(
+            children: [
+              AppTopBar(
+                title: 'Product',
+                showBack: true,
+                onBack: handleBack,
+              ),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
@@ -171,6 +196,7 @@ class ProductDetailScreen extends ConsumerWidget {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

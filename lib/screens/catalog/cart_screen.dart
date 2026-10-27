@@ -126,15 +126,32 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     final theme = Theme.of(context);
     final cart = ref.watch(cartProvider);
 
-    return Scaffold(
-      backgroundColor: theme.bgColor,
-      body: SafeArea(
-        child: Column(
-          children: [
-            AppTopBar(
-              title: _title,
-              showBack: true,
-              onBack: () => context.go('/catalog'),
+    void handleBack() {
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go('/catalog');
+      }
+    }
+
+    final canPop = context.canPop();
+
+    return PopScope(
+      canPop: canPop,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          context.go('/catalog');
+        }
+      },
+      child: Scaffold(
+        backgroundColor: theme.bgColor,
+        body: SafeArea(
+          child: Column(
+            children: [
+              AppTopBar(
+                title: _title,
+                showBack: true,
+                onBack: handleBack,
               actions: [
                 if (cart.lines.isNotEmpty)
                   TextButton(
@@ -480,6 +497,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

@@ -131,17 +131,33 @@ class _ShopOrderDetailScreenState
     final theme = Theme.of(context);
     final order = ref.watch(_shopOrderByIdProvider(widget.orderId));
 
+    void handleBack() {
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go('/orders');
+      }
+    }
+
+    final canPop = context.canPop();
+
     if (order == null) {
-      return Scaffold(
-        backgroundColor: theme.bgColor,
-        appBar: AppBar(
-          title: const Text('Shop order'),
-          leading: const AppBackButton(),
-        ),
-        body: const EmptyState(
-          icon: Icons.search_off_rounded,
-          title: 'Order not found',
-          subtitle: 'It may have been removed.',
+      return PopScope(
+        canPop: canPop,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) context.go('/orders');
+        },
+        child: Scaffold(
+          backgroundColor: theme.bgColor,
+          appBar: AppBar(
+            title: const Text('Shop order'),
+            leading: AppBackButton(onPressed: handleBack),
+          ),
+          body: const EmptyState(
+            icon: Icons.search_off_rounded,
+            title: 'Order not found',
+            subtitle: 'It may have been removed.',
+          ),
         ),
       );
     }
@@ -150,19 +166,24 @@ class _ShopOrderDetailScreenState
     final canCancel = order.status == ShopOrderStatus.collected ||
         order.status == ShopOrderStatus.processing;
 
-    return Scaffold(
-      backgroundColor: theme.bgColor,
-      body: SafeArea(
-        child: Column(
-          children: [
-            AppTopBar(
-              title: order.orderNumber,
-              showBack: true,
-              onBack: () => context.go('/orders'),
-              actions: [
-                StatusChip(
-                  label: order.status.label,
-                  color: shopStatusColor(order.status),
+    return PopScope(
+      canPop: canPop,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) context.go('/orders');
+      },
+      child: Scaffold(
+        backgroundColor: theme.bgColor,
+        body: SafeArea(
+          child: Column(
+            children: [
+              AppTopBar(
+                title: order.orderNumber,
+                showBack: true,
+                onBack: handleBack,
+                actions: [
+                  StatusChip(
+                    label: order.status.label,
+                    color: shopStatusColor(order.status),
                 ),
               ],
             ),
@@ -299,8 +320,9 @@ class _ShopOrderDetailScreenState
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 class _ItemRow extends StatelessWidget {

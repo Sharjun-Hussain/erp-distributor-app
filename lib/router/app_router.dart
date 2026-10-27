@@ -23,12 +23,15 @@ import '../screens/shops/shop_form_screen.dart';
 import '../screens/shops/shop_detail_screen.dart';
 import '../screens/shops/shops_screen.dart';
 
+final rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
+
 final routerProvider = Provider<GoRouter>((ref) {
   final refresh = ValueNotifier<int>(0);
   ref.listen(authProvider, (_, _) => refresh.value++);
   ref.onDispose(refresh.dispose);
 
   return GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/login',
     refreshListenable: refresh,
     redirect: (context, state) {
@@ -50,13 +53,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/login',
         pageBuilder: (context, state) =>
-            CupertinoPage(child: const LoginScreen()),
+            const CupertinoPage(child: LoginScreen()),
       ),
       GoRoute(
         path: '/setup',
         redirect: (context, state) => kReleaseMode ? '/login' : null,
         pageBuilder: (context, state) =>
-            CupertinoPage(child: const SetupScreen()),
+            const CupertinoPage(child: SetupScreen()),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, shell) => MainShell(shell: shell),
@@ -65,104 +68,148 @@ final routerProvider = Provider<GoRouter>((ref) {
             GoRoute(
               path: '/home',
               pageBuilder: (context, state) =>
-                  CupertinoPage(child: const HomeScreen()),
+                  const CupertinoPage(child: HomeScreen()),
             ),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
               path: '/catalog',
               pageBuilder: (context, state) =>
-                  CupertinoPage(child: const CatalogScreen()),
-            ),
-            GoRoute(
-              path: '/catalog/product/:id',
-              pageBuilder: (context, state) => CupertinoPage(
-                child: ProductDetailScreen(
-                    productId: state.pathParameters['id']!),
-              ),
-            ),
-            GoRoute(
-              path: '/catalog/cart',
-              pageBuilder: (context, state) =>
-                  CupertinoPage(child: const CartScreen()),
+                  const CupertinoPage(child: CatalogScreen()),
+              routes: [
+                GoRoute(
+                  path: 'product/:id',
+                  parentNavigatorKey: rootNavigatorKey,
+                  pageBuilder: (context, state) => CupertinoPage(
+                    key: state.pageKey,
+                    child: ProductDetailScreen(
+                        productId: state.pathParameters['id']!),
+                  ),
+                ),
+                GoRoute(
+                  path: 'cart',
+                  parentNavigatorKey: rootNavigatorKey,
+                  pageBuilder: (context, state) => CupertinoPage(
+                    key: state.pageKey,
+                    child: const CartScreen(),
+                  ),
+                ),
+              ],
             ),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
               path: '/orders',
               pageBuilder: (context, state) =>
-                  CupertinoPage(child: const OrdersScreen()),
-            ),
-            GoRoute(
-              path: '/orders/shop/:id',
-              pageBuilder: (context, state) => CupertinoPage(
-                child:
-                    ShopOrderDetailScreen(orderId: state.pathParameters['id']!),
-              ),
-            ),
-            GoRoute(
-              path: '/orders/new-shop-order',
-              pageBuilder: (context, state) =>
-                  CupertinoPage(child: const NewShopOrderScreen()),
-            ),
-            GoRoute(
-              path: '/orders/direct-sale',
-              pageBuilder: (context, state) =>
-                  CupertinoPage(child: const NewShopOrderScreen()),
+                  const CupertinoPage(child: OrdersScreen()),
+              routes: [
+                GoRoute(
+                  path: 'shop/:id',
+                  parentNavigatorKey: rootNavigatorKey,
+                  pageBuilder: (context, state) => CupertinoPage(
+                    key: state.pageKey,
+                    child: ShopOrderDetailScreen(
+                        orderId: state.pathParameters['id']!),
+                  ),
+                ),
+                GoRoute(
+                  path: 'new-shop-order',
+                  parentNavigatorKey: rootNavigatorKey,
+                  pageBuilder: (context, state) => CupertinoPage(
+                    key: state.pageKey,
+                    child: const NewShopOrderScreen(),
+                  ),
+                ),
+                GoRoute(
+                  path: 'direct-sale',
+                  parentNavigatorKey: rootNavigatorKey,
+                  pageBuilder: (context, state) => CupertinoPage(
+                    key: state.pageKey,
+                    child: const NewShopOrderScreen(),
+                  ),
+                ),
+              ],
             ),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
               path: '/shops',
               pageBuilder: (context, state) =>
-                  CupertinoPage(child: const ShopsScreen()),
-            ),
-            GoRoute(
-              path: '/shops/new',
-              pageBuilder: (context, state) =>
-                  CupertinoPage(child: const ShopFormScreen()),
-            ),
-            GoRoute(
-              path: '/shops/:id',
-              pageBuilder: (context, state) => CupertinoPage(
-                child: ShopDetailScreen(shopId: state.pathParameters['id']!),
-              ),
-            ),
-            GoRoute(
-              path: '/shops/:id/edit',
-              pageBuilder: (context, state) => CupertinoPage(
-                child:
-                    ShopFormScreen(shopId: state.pathParameters['id']!),
-              ),
+                  const CupertinoPage(child: ShopsScreen()),
+              routes: [
+                GoRoute(
+                  path: 'new',
+                  parentNavigatorKey: rootNavigatorKey,
+                  pageBuilder: (context, state) => CupertinoPage(
+                    key: state.pageKey,
+                    child: const ShopFormScreen(),
+                  ),
+                ),
+                GoRoute(
+                  path: ':id',
+                  parentNavigatorKey: rootNavigatorKey,
+                  pageBuilder: (context, state) => CupertinoPage(
+                    key: state.pageKey,
+                    child:
+                        ShopDetailScreen(shopId: state.pathParameters['id']!),
+                  ),
+                  routes: [
+                    GoRoute(
+                      path: 'edit',
+                      parentNavigatorKey: rootNavigatorKey,
+                      pageBuilder: (context, state) => CupertinoPage(
+                        key: state.pageKey,
+                        child: ShopFormScreen(
+                            shopId: state.pathParameters['id']!),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
               path: '/more',
               pageBuilder: (context, state) =>
-                  CupertinoPage(child: const MoreScreen()),
-            ),
-            GoRoute(
-              path: '/more/invoices',
-              pageBuilder: (context, state) =>
-                  CupertinoPage(child: const InvoicesScreen()),
-            ),
-            GoRoute(
-              path: '/more/invoices/:id',
-              pageBuilder: (context, state) => CupertinoPage(
-                child:
-                    InvoiceDetailScreen(invoiceId: state.pathParameters['id']!),
-              ),
-            ),
-            GoRoute(
-              path: '/more/profile',
-              pageBuilder: (context, state) =>
-                  CupertinoPage(child: const ProfileScreen()),
-            ),
-            GoRoute(
-              path: '/more/price-list',
-              pageBuilder: (context, state) =>
-                  CupertinoPage(child: const PriceListScreen()),
+                  const CupertinoPage(child: MoreScreen()),
+              routes: [
+                GoRoute(
+                  path: 'invoices',
+                  parentNavigatorKey: rootNavigatorKey,
+                  pageBuilder: (context, state) => CupertinoPage(
+                    key: state.pageKey,
+                    child: const InvoicesScreen(),
+                  ),
+                  routes: [
+                    GoRoute(
+                      path: ':id',
+                      parentNavigatorKey: rootNavigatorKey,
+                      pageBuilder: (context, state) => CupertinoPage(
+                        key: state.pageKey,
+                        child: InvoiceDetailScreen(
+                            invoiceId: state.pathParameters['id']!),
+                      ),
+                    ),
+                  ],
+                ),
+                GoRoute(
+                  path: 'profile',
+                  parentNavigatorKey: rootNavigatorKey,
+                  pageBuilder: (context, state) => CupertinoPage(
+                    key: state.pageKey,
+                    child: const ProfileScreen(),
+                  ),
+                ),
+                GoRoute(
+                  path: 'price-list',
+                  parentNavigatorKey: rootNavigatorKey,
+                  pageBuilder: (context, state) => CupertinoPage(
+                    key: state.pageKey,
+                    child: const PriceListScreen(),
+                  ),
+                ),
+              ],
             ),
           ]),
         ],

@@ -31,17 +31,33 @@ class ShopDetailScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final shop = ref.watch(_shopByIdProvider(shopId));
 
+    void handleBack() {
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go('/shops');
+      }
+    }
+
+    final canPop = context.canPop();
+
     if (shop == null) {
-      return Scaffold(
-        backgroundColor: theme.bgColor,
-        appBar: AppBar(
-          title: const Text('Shop'),
-          leading: const AppBackButton(),
-        ),
-        body: const EmptyState(
-          icon: Icons.search_off_rounded,
-          title: 'Shop not found',
-          subtitle: 'It may have been removed.',
+      return PopScope(
+        canPop: canPop,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) context.go('/shops');
+        },
+        child: Scaffold(
+          backgroundColor: theme.bgColor,
+          appBar: AppBar(
+            title: const Text('Shop'),
+            leading: AppBackButton(onPressed: handleBack),
+          ),
+          body: const EmptyState(
+            icon: Icons.search_off_rounded,
+            title: 'Shop not found',
+            subtitle: 'It may have been removed.',
+          ),
         ),
       );
     }
@@ -50,15 +66,20 @@ class ShopDetailScreen extends ConsumerWidget {
     final shopOrders =
         orders.where((o) => o.shopId == shop.id).toList();
 
-    return Scaffold(
-      backgroundColor: theme.bgColor,
-      body: SafeArea(
-        child: Column(
-          children: [
-            AppTopBar(
-              title: shop.name,
-              showBack: true,
-              onBack: () => context.go('/shops'),
+    return PopScope(
+      canPop: canPop,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) context.go('/shops');
+      },
+      child: Scaffold(
+        backgroundColor: theme.bgColor,
+        body: SafeArea(
+          child: Column(
+            children: [
+              AppTopBar(
+                title: shop.name,
+                showBack: true,
+                onBack: handleBack,
               actions: [
                 IconButton(
                   onPressed: () => context.push('/shops/$shopId/edit'),
@@ -225,6 +246,7 @@ class ShopDetailScreen extends ConsumerWidget {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

@@ -19,16 +19,31 @@ class ProfileScreen extends ConsumerWidget {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    return Scaffold(
-      backgroundColor: theme.bgColor,
-      body: SafeArea(
-        child: Column(
-          children: [
-            AppTopBar(
-              title: 'Profile',
-              showBack: true,
-              onBack: () => context.go('/more'),
-            ),
+    void handleBack() {
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go('/more');
+      }
+    }
+
+    final canPop = context.canPop();
+
+    return PopScope(
+      canPop: canPop,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) context.go('/more');
+      },
+      child: Scaffold(
+        backgroundColor: theme.bgColor,
+        body: SafeArea(
+          child: Column(
+            children: [
+              AppTopBar(
+                title: 'Profile',
+                showBack: true,
+                onBack: handleBack,
+              ),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.all(16),
@@ -150,8 +165,9 @@ class ProfileScreen extends ConsumerWidget {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _row(BuildContext context, ThemeData theme, IconData icon,
       String label, String value) {

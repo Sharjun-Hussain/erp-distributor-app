@@ -58,33 +58,54 @@ class InvoiceDetailScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final inv = ref.watch(_invoiceByIdProvider(invoiceId));
 
+    void handleBack() {
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go('/more/invoices');
+      }
+    }
+
+    final canPop = context.canPop();
+
     if (inv == null) {
-      return Scaffold(
-        backgroundColor: theme.bgColor,
-        appBar: AppBar(
-          title: const Text('Invoice'),
-          leading: const AppBackButton(),
-        ),
-        body: const EmptyState(
-          icon: Icons.search_off_rounded,
-          title: 'Invoice not found',
-          subtitle: 'It may have been removed.',
+      return PopScope(
+        canPop: canPop,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) context.go('/more/invoices');
+        },
+        child: Scaffold(
+          backgroundColor: theme.bgColor,
+          appBar: AppBar(
+            title: const Text('Invoice'),
+            leading: AppBackButton(onPressed: handleBack),
+          ),
+          body: const EmptyState(
+            icon: Icons.search_off_rounded,
+            title: 'Invoice not found',
+            subtitle: 'It may have been removed.',
+          ),
         ),
       );
     }
 
-    return Scaffold(
-      backgroundColor: theme.bgColor,
-      body: SafeArea(
-        child: Column(
-          children: [
-            AppTopBar(
-              title: inv.invoiceNumber,
-              showBack: true,
-              onBack: () => context.pop(),
-              actions: [
-                StatusChip(
-                  label: inv.status == InvoiceStatus.paid
+    return PopScope(
+      canPop: canPop,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) context.go('/more/invoices');
+      },
+      child: Scaffold(
+        backgroundColor: theme.bgColor,
+        body: SafeArea(
+          child: Column(
+            children: [
+              AppTopBar(
+                title: inv.invoiceNumber,
+                showBack: true,
+                onBack: handleBack,
+                actions: [
+                  StatusChip(
+                    label: inv.status == InvoiceStatus.paid
                       ? 'Paid'
                       : inv.status == InvoiceStatus.partiallyPaid
                           ? 'Partial'
@@ -445,8 +466,9 @@ class InvoiceDetailScreen extends ConsumerWidget {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   TextStyle _headStyle(ThemeData theme) => GoogleFonts.inter(
         fontSize: 10,
