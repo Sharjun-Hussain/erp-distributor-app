@@ -8,6 +8,7 @@ import '../../config/app_config.dart';
 import '../../models/finance.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/data_providers.dart';
+import '../../services/update_service.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/common.dart';
@@ -119,6 +120,15 @@ class MoreScreen extends ConsumerWidget {
                       _buildSectionCard(
                         theme,
                         children: [
+                          _menuTile(
+                            theme,
+                            icon: LucideIcons.arrowUpCircle,
+                            iconColor: const Color(0xFF10B981),
+                            title: 'Check for Updates',
+                            subtitle: 'Check for the latest distributor app release',
+                            onTap: () => UpdateService.manualCheckForUpdates(context),
+                          ),
+                          _divider(theme),
                           _menuTile(
                             theme,
                             icon: LucideIcons.server,

@@ -10,6 +10,7 @@ import 'package:toastification/toastification.dart';
 
 import 'config/app_config.dart';
 import 'router/app_router.dart';
+import 'services/update_service.dart';
 import 'theme/app_theme.dart';
 
 void main() async {
@@ -105,6 +106,19 @@ class _AppWrapperState extends State<AppWrapper> with WidgetsBindingObserver {
     ) {
       _updateOfflineStatus(results);
     });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        UpdateService.checkForUpdates(context);
+      }
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && !_isOffline && mounted) {
+      UpdateService.checkForUpdates(context);
+    }
   }
 
   Future<void> _checkInitialConnectivity() async {
