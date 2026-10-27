@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -25,6 +24,16 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   bool _submitting = false;
   final _notesController = TextEditingController();
   final _billDiscountController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    final d = ref.read(cartProvider).billDiscount;
+    if (d > 0) {
+      _billDiscountController.text =
+          d == d.roundToDouble() ? d.toInt().toString() : d.toString();
+    }
+  }
 
   @override
   void dispose() {
@@ -121,6 +130,256 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     }
   }
 
+  Widget _buildCartItemCard({
+    required BuildContext context,
+    required CartLine line,
+    required ThemeData theme,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: theme.glassBorder),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top Row: Avatar, Product Details, Line Total
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ProductAvatar(
+                name: line.product.name,
+                colorHex: line.product.colorHex,
+                size: 44,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      line.displayName,
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: theme.textMain,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: theme.surfaceColor,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: theme.glassBorder),
+                          ),
+                          child: Text(
+                            '${F.money(line.unitPrice)} / ${line.product.unit}',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: theme.textSecondary,
+                            ),
+                          ),
+                        ),
+                        if (line.discount > 0) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.warning.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '−${F.money(line.discount)}',
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.warning,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                F.money(line.lineTotal),
+                style: GoogleFonts.inter(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.brand,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 14),
+          Divider(color: theme.glassBorder, height: 1),
+          const SizedBox(height: 12),
+
+          // Bottom Row: Stepper and Actions
+          Row(
+            children: [
+              // Stepper Pill
+              Container(
+                decoration: BoxDecoration(
+                  color: theme.surfaceColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: theme.glassBorder),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: line.qty > 1
+                            ? () => ref
+                                .read(cartProvider.notifier)
+                                .setQty(line.key, line.qty - 1)
+                            : null,
+                        borderRadius: const BorderRadius.horizontal(
+                          left: Radius.circular(12),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 7,
+                          ),
+                          child: Icon(
+                            Icons.remove_rounded,
+                            size: 18,
+                            color: line.qty > 1
+                                ? theme.textMain
+                                : theme.textSecondary.withValues(alpha: 0.3),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      child: Text(
+                        '${line.qty}',
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                          color: theme.textMain,
+                        ),
+                      ),
+                    ),
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => ref
+                            .read(cartProvider.notifier)
+                            .setQty(line.key, line.qty + 1),
+                        borderRadius: const BorderRadius.horizontal(
+                          right: Radius.circular(12),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 7,
+                          ),
+                          child: Icon(
+                            Icons.add_rounded,
+                            size: 18,
+                            color: theme.textMain,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const Spacer(),
+
+              // Edit Line
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => _editLine(line),
+                  borderRadius: BorderRadius.circular(10),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          LucideIcons.pencil,
+                          size: 14,
+                          color: AppColors.brand,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          'Edit',
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.brand,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+
+              // Delete Item
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () =>
+                      ref.read(cartProvider.notifier).remove(line.key),
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    padding: const EdgeInsets.all(7),
+                    decoration: BoxDecoration(
+                      color: AppColors.danger.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      LucideIcons.trash2,
+                      size: 16,
+                      color: AppColors.danger,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -152,74 +411,226 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                 title: _title,
                 showBack: true,
                 onBack: handleBack,
-              actions: [
-                if (cart.lines.isNotEmpty)
-                  TextButton(
-                    onPressed: () => ref.read(cartProvider.notifier).clear(),
-                    child: const Text(
-                      'Clear',
-                      style: TextStyle(
-                        color: AppColors.danger,
-                        fontWeight: FontWeight.w600,
+                actions: [
+                  TextButton.icon(
+                    onPressed: handleBack,
+                    icon: const Icon(
+                      LucideIcons.plus,
+                      size: 15,
+                      color: AppColors.brand,
+                    ),
+                    label: Text(
+                      'Add Items',
+                      style: GoogleFonts.inter(
+                        color: AppColors.brand,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
                       ),
                     ),
                   ),
-              ],
-            ),
-            if (cart.shop != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.brand.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(LucideIcons.store,
-                          size: 16, color: AppColors.brand),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          cart.shop!.name,
-                          style: GoogleFonts.inter(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
+                  if (cart.lines.isNotEmpty)
+                    TextButton(
+                      onPressed: () => ref.read(cartProvider.notifier).clear(),
+                      child: Text(
+                        'Clear',
+                        style: GoogleFonts.inter(
+                          color: AppColors.danger,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+
+              // Shop Banner
+              if (cart.shop != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 2, 16, 10),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.brand.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: AppColors.brand.withValues(alpha: 0.2),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.brand.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            LucideIcons.store,
+                            size: 18,
                             color: AppColors.brand,
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                cart.shop!.name,
+                                style: GoogleFonts.inter(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: theme.textMain,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                cart.purpose == CartPurpose.directSale
+                                    ? 'Direct Sale • Immediate Invoice'
+                                    : 'Shop Order • Warehouse Dispatch',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.brand,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.brand.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            cart.purpose == CartPurpose.directSale
+                                ? 'DIRECT'
+                                : 'ORDER',
+                            style: GoogleFonts.inter(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.brand,
+                              letterSpacing: 0.6,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            Expanded(
-              child: cart.lines.isEmpty
-                  ? EmptyState(
-                      icon: Icons.shopping_cart_outlined,
-                      title: 'Your cart is empty',
-                      subtitle: 'Add products from the catalog.',
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: cart.lines.length + 1,
-                      separatorBuilder: (_, _) => const SizedBox(height: 10),
-                      itemBuilder: (context, index) {
-                        if (index < cart.lines.length) {
-                          final line = cart.lines[index];
-                          return AppCard(
-                            padding: const EdgeInsets.all(12),
+
+              Expanded(
+                child: cart.lines.isEmpty
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(32),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(22),
+                                decoration: BoxDecoration(
+                                  color: theme.surfaceColor,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  LucideIcons.shoppingBag,
+                                  size: 48,
+                                  color: theme.textSecondary,
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                              Text(
+                                'Your cart is empty',
+                                style: GoogleFonts.inter(
+                                  fontSize: 19,
+                                  fontWeight: FontWeight.w800,
+                                  color: theme.textMain,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Browse the catalog and add products to start an order.',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.inter(
+                                  fontSize: 13.5,
+                                  color: theme.textSecondary,
+                                  height: 1.4,
+                                ),
+                              ),
+                              const SizedBox(height: 28),
+                              OutlinedButton.icon(
+                                onPressed: handleBack,
+                                icon: const Icon(LucideIcons.arrowLeft, size: 16),
+                                label: const Text('Browse Catalog'),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 12,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : ListView(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                        children: [
+                          // Cart Items List
+                          ...cart.lines.map(
+                            (line) => Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: _buildCartItemCard(
+                                context: context,
+                                line: line,
+                                theme: theme,
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 4),
+
+                          // Bill discount & Notes Card
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: theme.cardColor,
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(color: theme.glassBorder),
+                            ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
+                                // Bill discount row
                                 Row(
                                   children: [
-                                    ProductAvatar(
-                                      name: line.product.name,
-                                      colorHex: line.product.colorHex,
-                                      size: 42,
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.brand
+                                            .withValues(alpha: 0.1),
+                                        borderRadius:
+                                            BorderRadius.circular(10),
+                                      ),
+                                      child: const Icon(
+                                        LucideIcons.tag,
+                                        size: 16,
+                                        color: AppColors.brand,
+                                      ),
                                     ),
                                     const SizedBox(width: 12),
                                     Expanded(
@@ -228,276 +639,340 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                                             CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            line.displayName,
+                                            'Bill Discount',
                                             style: GoogleFonts.inter(
                                               fontSize: 13.5,
                                               fontWeight: FontWeight.w700,
                                               color: theme.textMain,
                                             ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
                                           ),
-                                          const SizedBox(height: 2),
                                           Text(
-                                            '${F.money(line.unitPrice)} × ${line.qty} ${line.product.unit}',
+                                            'Overall order discount',
                                             style: GoogleFonts.inter(
-                                              fontSize: 12,
+                                              fontSize: 11,
                                               color: theme.textSecondary,
                                             ),
                                           ),
-                                          if (line.discount > 0) ...[
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              'Discount −${F.money(line.discount)}',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 11.5,
-                                                fontWeight: FontWeight.w600,
-                                                color: AppColors.warning,
-                                              ),
-                                            ),
-                                          ],
                                         ],
                                       ),
                                     ),
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.end,
-                                      children: [
-                                        Text(
-                                          F.money(line.lineTotal),
-                                          style: GoogleFonts.inter(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w800,
-                                            color: AppColors.brand,
-                                          ),
+                                    Container(
+                                      width: 125,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 8,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: theme.surfaceColor,
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color: theme.surfaceMutedColor,
                                         ),
-                                        const SizedBox(height: 6),
-                                        GestureDetector(
-                                          onTap: () => _editLine(line),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              const Icon(LucideIcons.pencil,
-                                                  size: 13,
-                                                  color: AppColors.brand),
-                                              const SizedBox(width: 4),
-                                              Text(
-                                                'Edit',
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: AppColors.brand,
-                                                ),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Text(
+                                            'Rs',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 12.5,
+                                              fontWeight: FontWeight.w700,
+                                              color: theme.textSecondary,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Expanded(
+                                            child: TextField(
+                                              controller:
+                                                  _billDiscountController,
+                                              keyboardType:
+                                                  const TextInputType
+                                                      .numberWithOptions(
+                                                      decimal: true),
+                                              textAlign: TextAlign.right,
+                                              style: GoogleFonts.inter(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w700,
+                                                color: theme.textMain,
                                               ),
-                                            ],
+                                              onChanged: (v) => ref
+                                                  .read(cartProvider.notifier)
+                                                  .setBillDiscount(
+                                                      double.tryParse(v) ?? 0),
+                                              decoration: InputDecoration(
+                                                isDense: true,
+                                                hintText: '0',
+                                                hintStyle: GoogleFonts.inter(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: theme.textSecondary
+                                                      .withValues(alpha: 0.5),
+                                                ),
+                                                border: InputBorder.none,
+                                                enabledBorder: InputBorder.none,
+                                                focusedBorder: InputBorder.none,
+                                                contentPadding: EdgeInsets.zero,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+
+                                const SizedBox(height: 12),
+                                Divider(color: theme.glassBorder, height: 1),
+                                const SizedBox(height: 12),
+
+                                // Notes input
+                                TextField(
+                                  controller: _notesController,
+                                  maxLines: 2,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 13.5,
+                                    color: theme.textMain,
+                                  ),
+                                  decoration: InputDecoration(
+                                    hintText:
+                                        'Add order notes or instructions...',
+                                    hintStyle: GoogleFonts.inter(
+                                      fontSize: 13,
+                                      color: theme.textSecondary
+                                          .withValues(alpha: 0.6),
+                                    ),
+                                    prefixIcon: Padding(
+                                      padding: const EdgeInsets.only(
+                                          bottom: 20, left: 2, right: 8),
+                                      child: Icon(
+                                        LucideIcons.fileText,
+                                        size: 16,
+                                        color: theme.textSecondary,
+                                      ),
+                                    ),
+                                    prefixIconConstraints:
+                                        const BoxConstraints(minWidth: 26),
+                                    border: InputBorder.none,
+                                    enabledBorder: InputBorder.none,
+                                    focusedBorder: InputBorder.none,
+                                    filled: false,
+                                    isDense: true,
+                                    contentPadding:
+                                        const EdgeInsets.symmetric(vertical: 4),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // Order Summary Breakdown Card
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: theme.cardColor,
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(color: theme.glassBorder),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          LucideIcons.receipt,
+                                          size: 15,
+                                          color: theme.textSecondary,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'ORDER BREAKDOWN',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w800,
+                                            letterSpacing: 0.8,
+                                            color: theme.textSecondary,
                                           ),
                                         ),
                                       ],
                                     ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 3,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: theme.surfaceColor,
+                                        borderRadius:
+                                            BorderRadius.circular(8),
+                                        border: Border.all(
+                                            color: theme.glassBorder),
+                                      ),
+                                      child: Text(
+                                        '${cart.lines.length} ${cart.lines.length == 1 ? 'item' : 'items'} • ${cart.itemCount} units',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                          color: theme.textSecondary,
+                                        ),
+                                      ),
+                                    ),
                                   ],
                                 ),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 14),
+
+                                // Subtotal
                                 Row(
                                   children: [
-                                    QtyStepper(
-                                      qty: line.qty,
-                                      onChanged: (v) => ref
-                                          .read(cartProvider.notifier)
-                                          .setQty(line.key, v),
+                                    Text(
+                                      'Subtotal',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 13.5,
+                                        fontWeight: FontWeight.w500,
+                                        color: theme.textSecondary,
+                                      ),
                                     ),
                                     const Spacer(),
-                                    GestureDetector(
-                                      onTap: () => ref
-                                          .read(cartProvider.notifier)
-                                          .remove(line.key),
-                                      child: const Icon(
-                                          LucideIcons.trash2,
-                                          size: 18,
-                                          color: AppColors.danger),
+                                    Text(
+                                      F.money(cart.grossTotal),
+                                      style: GoogleFonts.inter(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: theme.textMain,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+
+                                if (cart.discountTotal > 0) ...[
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      Text(
+                                        'Total Discounts',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 13.5,
+                                          fontWeight: FontWeight.w500,
+                                          color: AppColors.warning,
+                                        ),
+                                      ),
+                                      const Spacer(),
+                                      Text(
+                                        '−${F.money(cart.discountTotal)}',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.warning,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+
+                                const SizedBox(height: 12),
+                                Divider(color: theme.glassBorder, height: 1),
+                                const SizedBox(height: 12),
+
+                                // Net Payable
+                                Row(
+                                  children: [
+                                    Text(
+                                      'Net Payable',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w800,
+                                        color: theme.textMain,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    Text(
+                                      F.money(cart.total),
+                                      style: GoogleFonts.inter(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w900,
+                                        color: AppColors.brand,
+                                      ),
                                     ),
                                   ],
                                 ),
                               ],
                             ),
-                          );
-                        }
-                        // Notes + bill discount card
-                        return AppCard(
+                          ),
+                        ],
+                      ),
+              ),
+
+              // Sticky Checkout Footer
+              if (cart.lines.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
+                  decoration: BoxDecoration(
+                    color: theme.cardColor,
+                    border:
+                        Border(top: BorderSide(color: theme.glassBorder)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 16,
+                        offset: const Offset(0, -4),
+                      ),
+                    ],
+                  ),
+                  child: SafeArea(
+                    top: false,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          flex: 4,
                           child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              TextField(
-                                controller: _notesController,
-                                maxLines: 2,
-                                decoration: InputDecoration(
-                                  hintText: 'Notes (optional)...',
-                                  hintStyle: GoogleFonts.inter(
-                                    fontSize: 14,
-                                    color: theme.textSecondary
-                                        .withValues(alpha: 0.7),
-                                  ),
-                                  prefixIcon: SizedBox(
-                                    width: 40,
-                                    height: 40,
-                                    child: Center(
-                                      child: SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: SvgPicture.asset(
-                                            'assets/svg/field_note.svg'),
-                                      ),
-                                    ),
-                                  ),
-                                  prefixIconConstraints:
-                                      const BoxConstraints(
-                                          minWidth: 40, minHeight: 40),
-                                  border: InputBorder.none,
-                                  enabledBorder: InputBorder.none,
-                                  focusedBorder: InputBorder.none,
-                                  filled: false,
-                                  isDense: true,
-                                  contentPadding:
-                                      const EdgeInsets.symmetric(
-                                          horizontal: 8, vertical: 12),
+                              Text(
+                                'Total (${cart.itemCount} units)',
+                                style: GoogleFonts.inter(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: theme.textSecondary,
                                 ),
                               ),
-                              Divider(color: theme.glassBorder, height: 20),
-                              Row(
-                                children: [
-                                  const Icon(LucideIcons.tag,
-                                      size: 16, color: AppColors.brand),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      'Bill discount',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: theme.textMain,
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(
-                                    width: 110,
-                                    child: TextField(
-                                      controller: _billDiscountController,
-                                      keyboardType:
-                                          const TextInputType.numberWithOptions(
-                                              decimal: true),
-                                      textAlign: TextAlign.right,
-                                      onChanged: (v) => ref
-                                          .read(cartProvider.notifier)
-                                          .setBillDiscount(
-                                              double.tryParse(v) ?? 0),
-                                      decoration: InputDecoration(
-                                        isDense: true,
-                                        prefixText: 'Rs ',
-                                        hintText: '0',
-                                        contentPadding:
-                                            const EdgeInsets.symmetric(
-                                                horizontal: 10,
-                                                vertical: 8),
-                                        border: OutlineInputBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(10),
-                                          borderSide: BorderSide(
-                                              color: theme.surfaceMutedColor),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                              const SizedBox(height: 2),
+                              Text(
+                                F.money(cart.total),
+                                style: GoogleFonts.inter(
+                                  fontSize: 21,
+                                  fontWeight: FontWeight.w900,
+                                  color: theme.textMain,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
                           ),
-                        );
-                      },
-                    ),
-            ),
-            if (cart.lines.isNotEmpty)
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: theme.cardColor,
-                  border: Border(top: BorderSide(color: theme.glassBorder)),
-                ),
-                child: Column(
-                  children: [
-                    if (cart.discountTotal > 0) ...[
-                      Row(
-                        children: [
-                          Text(
-                            'Subtotal',
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              color: theme.textSecondary,
-                            ),
-                          ),
-                          const Spacer(),
-                          Text(
-                            F.money(cart.grossTotal),
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              color: theme.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Text(
-                            'Discount',
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              color: AppColors.warning,
-                            ),
-                          ),
-                          const Spacer(),
-                          Text(
-                            '−${F.money(cart.discountTotal)}',
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.warning,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                    ],
-                    Row(
-                      children: [
-                        Text(
-                          'Total',
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            color: theme.textSecondary,
-                          ),
                         ),
-                        const Spacer(),
-                        Text(
-                          F.money(cart.total),
-                          style: GoogleFonts.inter(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                            color: theme.textMain,
+                        const SizedBox(width: 14),
+                        Expanded(
+                          flex: 6,
+                          child: PrimaryButton(
+                            label: _buttonLabel,
+                            icon: cart.purpose == CartPurpose.directSale
+                                ? LucideIcons.fileCheck2
+                                : LucideIcons.checkCheck,
+                            loading: _submitting,
+                            onPressed: _submit,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    PrimaryButton(
-                      label: _buttonLabel,
-                      loading: _submitting,
-                      onPressed: _submit,
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 }

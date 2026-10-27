@@ -460,93 +460,132 @@ Future<CartLine?> showLineEditSheet(
     backgroundColor: Colors.transparent,
     builder: (ctx) {
       final theme = Theme.of(ctx);
-      return Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-          decoration: BoxDecoration(
-            color: theme.cardColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: theme.surfaceMutedColor,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
+      return StatefulBuilder(
+        builder: (context, setSB) {
+          final p = double.tryParse(priceController.text) ?? line.unitPrice;
+          final d = double.tryParse(discountController.text) ?? 0;
+          final lineTotal = ((p * line.qty) - d).clamp(0.0, double.infinity);
+
+          return Padding(
+            padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              decoration: BoxDecoration(
+                color: theme.cardColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
               ),
-              const SizedBox(height: 16),
-              Text(
-                line.displayName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: theme.textMain,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: _LabeledField(
-                      label: 'Unit price',
-                      controller: priceController,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _LabeledField(
-                      label: 'Line discount',
-                      controller: discountController,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed: () => Navigator.of(ctx).pop(),
-                      child: Text(
-                        'Cancel',
-                        style: GoogleFonts.inter(
-                          fontSize: 15,
-                          color: theme.textSecondary,
-                        ),
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: theme.surfaceMutedColor,
+                        borderRadius: BorderRadius.circular(999),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    flex: 2,
-                    child: PrimaryButton(
-                      label: 'Save',
-                      icon: Icons.check_rounded,
-                      onPressed: () {
-                        final price = double.tryParse(priceController.text) ?? 0;
-                        final discount =
-                            double.tryParse(discountController.text) ?? 0;
-                        Navigator.of(ctx).pop(
-                          line.copyWith(unitPrice: price, discount: discount),
-                        );
-                      },
+                  const SizedBox(height: 16),
+                  Text(
+                    line.displayName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: theme.textMain,
                     ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Quantity: ${line.qty} ${line.product.unit}',
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: theme.textSecondary,
+                        ),
+                      ),
+                      Text(
+                        'Total: ${F.money(lineTotal)}',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.brand,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _LabeledField(
+                          label: 'Unit price',
+                          controller: priceController,
+                          onChanged: (_) => setSB(() {}),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _LabeledField(
+                          label: 'Line discount',
+                          controller: discountController,
+                          onChanged: (_) => setSB(() {}),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 22),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          child: Text(
+                            'Cancel',
+                            style: GoogleFonts.inter(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: theme.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: PrimaryButton(
+                          label: 'Save Changes',
+                          icon: Icons.check_rounded,
+                          onPressed: () {
+                            final price =
+                                double.tryParse(priceController.text) ??
+                                    line.unitPrice;
+                            final discount =
+                                double.tryParse(discountController.text) ?? 0;
+                            Navigator.of(ctx).pop(
+                              line.copyWith(
+                                  unitPrice: price, discount: discount),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       );
     },
   );
@@ -555,8 +594,13 @@ Future<CartLine?> showLineEditSheet(
 class _LabeledField extends StatelessWidget {
   final String label;
   final TextEditingController controller;
+  final ValueChanged<String>? onChanged;
 
-  const _LabeledField({required this.label, required this.controller});
+  const _LabeledField({
+    required this.label,
+    required this.controller,
+    this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -567,32 +611,56 @@ class _LabeledField extends StatelessWidget {
         Text(
           label,
           style: GoogleFonts.inter(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
+            fontSize: 12.5,
+            fontWeight: FontWeight.w700,
             color: theme.textSecondary,
           ),
         ),
         const SizedBox(height: 6),
-        TextField(
-          controller: controller,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: InputDecoration(
-            isDense: true,
-            prefixText: 'Rs ',
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: theme.surfaceMutedColor),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: theme.surfaceMutedColor),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.brand, width: 1.4),
-            ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: theme.surfaceColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: theme.surfaceMutedColor),
+          ),
+          child: Row(
+            children: [
+              Text(
+                'Rs',
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: theme.textSecondary,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  style: GoogleFonts.inter(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: theme.textMain,
+                  ),
+                  onChanged: onChanged,
+                  decoration: InputDecoration(
+                    isDense: true,
+                    hintText: '0',
+                    hintStyle: GoogleFonts.inter(
+                      fontSize: 14,
+                      color: theme.textSecondary.withValues(alpha: 0.5),
+                    ),
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
