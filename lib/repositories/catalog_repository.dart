@@ -1,5 +1,6 @@
 import '../data/mock_data.dart';
 import '../models/catalog.dart';
+import '../services/api_client.dart';
 
 abstract class CatalogRepository {
   Future<List<Product>> fetchProducts({String query = ''});
@@ -18,6 +19,25 @@ class MockCatalogRepository implements CatalogRepository {
   }
 }
 
-CatalogRepository buildCatalogRepository() => MockCatalogRepository();
+/// Hits `GET /api/v1/dapp/products?q=`.
+class ApiCatalogRepository implements CatalogRepository {
+  ApiCatalogRepository(this._client);
 
-// TODO(api): replace with ApiCatalogRepository hitting GET /api/v1/dapp/products.
+  final ApiClient _client;
+
+  @override
+  Future<List<Product>> fetchProducts({String query = ''}) async {
+    final data = await _client.get(
+      '/dapp/products',
+      query: query.trim().isEmpty ? null : {'q': query.trim()},
+    );
+    final list = (data as List?) ?? const [];
+    return list
+        .whereType<Map>()
+        .map((e) => Product.fromJson(e.cast<String, dynamic>()))
+        .toList();
+  }
+}
+
+CatalogRepository buildCatalogRepository(ApiClient client) =>
+    useMockApis ? MockCatalogRepository() : ApiCatalogRepository(client);

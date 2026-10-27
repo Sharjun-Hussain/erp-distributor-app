@@ -1,3 +1,5 @@
+import '../utils/json.dart';
+
 class Shop {
   final String id;
   final String name;
@@ -20,6 +22,30 @@ class Shop {
     this.balance = 0,
     this.isActive = true,
   });
+
+  factory Shop.fromJson(Map<String, dynamic> json) {
+    return Shop(
+      id: json['id']?.toString() ?? '',
+      name: (json['name'] ?? '').toString(),
+      contactPerson: (json['contactPerson'] ?? '').toString(),
+      phone: (json['phone'] ?? '').toString(),
+      email: (json['email'] ?? '').toString(),
+      address: (json['address'] ?? '').toString(),
+      creditLimit: toDouble(json['creditLimit']),
+      balance: toDouble(json['balance']),
+      isActive: json['isActive'] == null ? true : json['isActive'] == true,
+    );
+  }
+
+  Map<String, dynamic> toApiJson() => {
+        'name': name,
+        'contactPerson': contactPerson,
+        'phone': phone,
+        'email': email,
+        'address': address,
+        'creditLimit': creditLimit,
+        'isActive': isActive,
+      };
 
   Shop copyWith({
     String? name,

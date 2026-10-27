@@ -4,23 +4,60 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toastification/toastification.dart';
 
+import 'config/app_config.dart';
 import 'router/app_router.dart';
 import 'theme/app_theme.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    WidgetsFlutterBinding.ensureInitialized();
 
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(statusBarColor: Colors.transparent),
-  );
+    // Prevent Google Fonts from blocking on network requests
+    GoogleFonts.config.allowRuntimeFetching = false;
 
-  runApp(
-    const ProviderScope(
-      child: DistributorApp(),
-    ),
-  );
+    // Catch all unhandled Flutter framework errors
+    FlutterError.onError = (FlutterErrorDetails details) {
+      FlutterError.presentError(details);
+    };
+
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(statusBarColor: Colors.transparent),
+    );
+
+    try {
+      final prefs = await SharedPreferences.getInstance()
+          .timeout(const Duration(seconds: 2));
+      final customUrl = prefs.getString(AppConfig.customApiUrlKey);
+      if (customUrl != null && customUrl.isNotEmpty) {
+        AppConfig.setCustomUrl(customUrl);
+      }
+    } catch (_) {
+      // Ignore initialization errors
+    }
+
+    runApp(
+      const ProviderScope(
+        child: DistributorApp(),
+      ),
+    );
+  } catch (e, stack) {
+    FlutterError.presentError(FlutterErrorDetails(exception: e, stack: stack));
+    runApp(const MaterialApp(
+      home: Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: Text(
+            'App failed to start',
+            style: TextStyle(color: Colors.white),
+          ),
+        ),
+      ),
+    ));
+  }
 }
 
 class DistributorApp extends ConsumerWidget {
@@ -32,7 +69,7 @@ class DistributorApp extends ConsumerWidget {
 
     return ToastificationWrapper(
       child: MaterialApp.router(
-        title: 'Distributor',
+        title: 'CoDesk Distribution',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
         darkTheme: AppTheme.dark,
@@ -71,16 +108,22 @@ class _AppWrapperState extends State<AppWrapper> with WidgetsBindingObserver {
   }
 
   Future<void> _checkInitialConnectivity() async {
-    final results = await Connectivity().checkConnectivity();
-    _updateOfflineStatus(results);
+    try {
+      final results = await Connectivity().checkConnectivity();
+      _updateOfflineStatus(results);
+    } catch (_) {
+      // Ignore platform channel failures on initial frame
+    }
   }
 
   void _updateOfflineStatus(List<ConnectivityResult> results) {
     if (!mounted) return;
-    final offline = results.contains(ConnectivityResult.none);
-    if (_isOffline != offline) {
-      setState(() => _isOffline = offline);
-    }
+    try {
+      final offline = results.contains(ConnectivityResult.none);
+      if (_isOffline != offline) {
+        setState(() => _isOffline = offline);
+      }
+    } catch (_) {}
   }
 
   @override

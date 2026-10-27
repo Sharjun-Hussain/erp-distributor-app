@@ -14,7 +14,7 @@ void main() {
         const ProviderScope(child: DistributorApp()));
     await tester.pump(const Duration(seconds: 2));
     await tester.pump();
-    expect(find.text('Distributor'), findsWidgets);
+    expect(find.text('CoDesk Distribution'), findsWidgets);
     // Let entrance-effect delay timers fire, then unmount so the infinite
     // float-loop tickers are disposed cleanly.
     await tester.pump(const Duration(seconds: 3));

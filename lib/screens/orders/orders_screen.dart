@@ -17,16 +17,6 @@ class OrdersScreen extends ConsumerStatefulWidget {
 }
 
 class _OrdersScreenState extends ConsumerState<OrdersScreen> {
-  int _segment = 0; // 0 = manufacturer, 1 = shop
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final segment = GoRouterState.of(context).uri.queryParameters['segment'];
-    if (segment == 'shop') _segment = 1;
-    if (segment == 'manufacturer') _segment = 0;
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -36,128 +26,11 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            AppTopBar(
-              title: 'Orders',
-              bottom: SegmentedButton<int>(
-                segments: const [
-                  ButtonSegment(
-                    value: 0,
-                    label: Text('To Manufacturer'),
-                  ),
-                  ButtonSegment(
-                    value: 1,
-                    label: Text('Shop Orders'),
-                  ),
-                ],
-                selected: {_segment},
-                onSelectionChanged: (v) => setState(() => _segment = v.first),
-                style: ButtonStyle(
-                  backgroundColor: WidgetStateProperty.resolveWith(
-                    (states) => states.contains(WidgetState.selected)
-                        ? AppColors.brand.withValues(alpha: 0.14)
-                        : theme.cardColor,
-                  ),
-                  foregroundColor: WidgetStateProperty.resolveWith(
-                    (states) => states.contains(WidgetState.selected)
-                        ? AppColors.brand
-                        : theme.textSecondary,
-                  ),
-                  textStyle: WidgetStateProperty.all(
-                    GoogleFonts.inter(
-                        fontSize: 13, fontWeight: FontWeight.w700),
-                  ),
-                  side: WidgetStateProperty.all(
-                    BorderSide(color: theme.surfaceMutedColor),
-                  ),
-                ),
-              ),
-            ),
-            Expanded(
-              child: _segment == 0
-                  ? _ManufacturerOrdersList()
-                  : _ShopOrdersList(),
-            ),
+            const AppTopBar(title: 'Orders'),
+            Expanded(child: _ShopOrdersList()),
           ],
         ),
       ),
-    );
-  }
-}
-
-class _ManufacturerOrdersList extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final orders = ref.watch(manufacturerOrdersProvider);
-
-    return orders.when(
-      data: (list) {
-        if (list.isEmpty) {
-          return const EmptyState(
-            icon: Icons.receipt_long_outlined,
-            title: 'No orders yet',
-            subtitle: 'Orders you place to the manufacturer appear here.',
-          );
-        }
-        return RefreshIndicator(
-          onRefresh: () async => ref.invalidate(manufacturerOrdersProvider),
-          child: ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: list.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 10),
-            itemBuilder: (context, index) {
-              final o = list[index];
-              return AppCard(
-                padding: const EdgeInsets.all(14),
-                onTap: () => context.push('/orders/mfr/${o.id}'),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            o.orderNumber,
-                            style: GoogleFonts.inter(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
-                              color: theme.textMain,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${F.date(o.date)} • ${o.items.length} item(s)',
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              color: theme.textSecondary,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          StatusChip(
-                            label: o.status.label,
-                            color: manufacturerStatusColor(o.status),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Text(
-                      F.money(o.total),
-                      style: GoogleFonts.inter(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.brand,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        );
-      },
-      loading: () => const LoadingShimmer(),
-      error: (_, _) =>
-          const EmptyState(icon: Icons.error_outline, title: 'Load failed'),
     );
   }
 }

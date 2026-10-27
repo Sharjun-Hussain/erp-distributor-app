@@ -103,14 +103,12 @@ class ShopDetailScreen extends ConsumerWidget {
                         child: PrimaryButton(
                           label: 'New Order',
                           icon: LucideIcons.clipboardPlus,
-                          onPressed: shop.phone.isEmpty
-                              ? null
-                              : () {
-                                  ref
-                                      .read(cartProvider.notifier)
-                                      .startShopOrder(shop);
-                                  context.go('/catalog');
-                                },
+                          onPressed: () {
+                            ref
+                                .read(cartProvider.notifier)
+                                .startShopOrder(shop);
+                            context.go('/catalog');
+                          },
                         ),
                       ),
                       const SizedBox(width: 10),

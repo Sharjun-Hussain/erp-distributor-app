@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/auth.dart';
@@ -29,12 +30,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> initialize() async {
     try {
-      final token = await _repository.readToken();
-      if (token == null) {
+      final token = await _repository.readToken().timeout(
+        const Duration(seconds: 2),
+        onTimeout: () => null,
+      );
+      if (token == null || token.isEmpty) {
         state = const AuthState(status: AuthStatus.unauthenticated);
         return;
       }
-      final user = await _repository.me();
+      final user = await _repository.me().timeout(
+        const Duration(seconds: 4),
+      );
       state = AuthState(status: AuthStatus.authenticated, user: user);
     } catch (_) {
       await _repository.clearToken();
@@ -53,16 +59,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = AuthState(status: AuthStatus.authenticated, user: user);
       return true;
     } on AuthException catch (e) {
-      state = const AuthState(status: AuthStatus.unauthenticated);
       state = AuthState(
         status: AuthStatus.unauthenticated,
         error: e.message,
       );
       return false;
-    } catch (_) {
-      state = const AuthState(
+    } catch (e, stack) {
+      debugPrint('Login unexpected error: $e\n$stack');
+      state = AuthState(
         status: AuthStatus.unauthenticated,
-        error: 'Something went wrong. Please try again.',
+        error: e.toString().replaceFirst(RegExp(r'^Exception:\s*'), ''),
       );
       return false;
     }

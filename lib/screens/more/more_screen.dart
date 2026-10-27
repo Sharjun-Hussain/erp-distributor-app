@@ -18,7 +18,6 @@ class MoreScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final user = ref.watch(authProvider).user;
     final invoices = ref.watch(invoicesProvider).valueOrNull;
-    final payments = ref.watch(paymentsProvider).valueOrNull;
 
     final unpaid =
         invoices?.where((i) => i.status != InvoiceStatus.paid).length ?? 0;
@@ -73,7 +72,7 @@ class MoreScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 16),
-            SectionTitle(title: 'Finance & records'),
+            SectionTitle(title: 'Records'),
             _tile(
               context,
               theme,
@@ -83,30 +82,14 @@ class MoreScreen extends ConsumerWidget {
               badge: unpaid > 0 ? '$unpaid unpaid' : null,
               onTap: () => context.push('/more/invoices'),
             ),
+            const SizedBox(height: 10),
             _tile(
               context,
               theme,
-              icon: LucideIcons.wallet,
-              color: AppColors.success,
-              title: 'Payments',
-              badge: payments == null ? null : '${payments.length}',
-              onTap: () => context.push('/more/payments'),
-            ),
-            _tile(
-              context,
-              theme,
-              icon: LucideIcons.bookOpen,
+              icon: LucideIcons.tag,
               color: AppColors.info,
-              title: 'Ledger',
-              onTap: () => context.push('/more/ledger'),
-            ),
-            _tile(
-              context,
-              theme,
-              icon: LucideIcons.boxes,
-              color: AppColors.warning,
-              title: 'My Stock',
-              onTap: () => context.push('/more/stock'),
+              title: 'Price List',
+              onTap: () => context.push('/more/price-list'),
             ),
             const SizedBox(height: 16),
             SectionTitle(title: 'Account'),

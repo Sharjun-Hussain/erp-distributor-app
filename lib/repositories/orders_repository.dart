@@ -2,53 +2,28 @@ import '../data/mock_data.dart';
 import '../models/catalog.dart';
 import '../models/orders.dart';
 import '../models/shop.dart';
+import '../services/api_client.dart';
 
 abstract class OrdersRepository {
-  Future<List<ManufacturerOrder>> fetchManufacturerOrders();
-  Future<ManufacturerOrder> submitManufacturerOrder(
-      List<CartLine> lines, String notes);
-
   Future<List<ShopOrder>> fetchShopOrders();
-  Future<ShopOrder> createShopOrder(Shop shop, List<CartLine> lines);
-  Future<ShopOrder> createDirectSale(Shop shop, List<CartLine> lines);
+  Future<ShopOrder> createShopOrder(
+    Shop shop,
+    List<CartLine> lines, {
+    double discount = 0,
+    String? notes,
+  });
+  Future<ShopOrder> createDirectSale(
+    Shop shop,
+    List<CartLine> lines, {
+    double discount = 0,
+    String? notes,
+  });
   Future<ShopOrder> updateShopOrderStatus(String id, ShopOrderStatus status);
 }
 
 class MockOrdersRepository implements OrdersRepository {
-  int _mfrSeq = 1043;
   int _shopSeq = 2211;
   int _invoiceSeq = 3389;
-
-  @override
-  Future<List<ManufacturerOrder>> fetchManufacturerOrders() async {
-    await Future.delayed(const Duration(milliseconds: 400));
-    final list = List.of(MockData.manufacturerOrders);
-    list.sort((a, b) => b.date.compareTo(a.date));
-    return list;
-  }
-
-  @override
-  Future<ManufacturerOrder> submitManufacturerOrder(
-      List<CartLine> lines, String notes) async {
-    await Future.delayed(const Duration(milliseconds: 600));
-    final order = ManufacturerOrder(
-      id: 'mo-${DateTime.now().millisecondsSinceEpoch}',
-      orderNumber: 'MO-${_mfrSeq++}',
-      date: DateTime.now(),
-      status: ManufacturerOrderStatus.submitted,
-      items: lines
-          .map((l) => ManufacturerOrderItem(
-                productName: l.product.name,
-                unit: l.product.unit,
-                qty: l.qty,
-                unitPrice: l.product.distributorPrice,
-              ))
-          .toList(),
-      notes: notes,
-    );
-    MockData.manufacturerOrders.insert(0, order);
-    return order;
-  }
 
   @override
   Future<List<ShopOrder>> fetchShopOrders() async {
@@ -58,8 +33,11 @@ class MockOrdersRepository implements OrdersRepository {
     return list;
   }
 
-  ShopOrder _buildShopOrder(Shop shop, List<CartLine> lines,
-      {ShopOrderStatus status = ShopOrderStatus.collected, bool invoice = false}) {
+  ShopOrder _buildShopOrder(
+    Shop shop,
+    List<CartLine> lines, {
+    required bool invoice,
+  }) {
     return ShopOrder(
       id: 'so-${DateTime.now().millisecondsSinceEpoch}',
       orderNumber: 'SO-${_shopSeq++}',
@@ -68,34 +46,44 @@ class MockOrdersRepository implements OrdersRepository {
       shopAddress: shop.address,
       shopPhone: shop.phone,
       date: DateTime.now(),
-      status: status,
+      status: invoice ? ShopOrderStatus.delivered : ShopOrderStatus.collected,
       items: lines
           .map((l) => ShopOrderItem(
-                productName: l.product.name,
+                productName: l.displayName,
                 unit: l.product.unit,
                 qty: l.qty,
-                unitPrice: l.product.distributorPrice,
+                unitPrice: l.unitPrice,
+                discount: l.discount,
               ))
           .toList(),
       placedBy: MockData.distributorUser.name,
       invoiceNumber: invoice ? 'INV-${_invoiceSeq++}' : null,
-      paymentStatus: invoice ? 'unpaid' : 'unpaid',
+      paymentStatus: 'unpaid',
     );
   }
 
   @override
-  Future<ShopOrder> createShopOrder(Shop shop, List<CartLine> lines) async {
+  Future<ShopOrder> createShopOrder(
+    Shop shop,
+    List<CartLine> lines, {
+    double discount = 0,
+    String? notes,
+  }) async {
     await Future.delayed(const Duration(milliseconds: 600));
-    final order = _buildShopOrder(shop, lines);
+    final order = _buildShopOrder(shop, lines, invoice: false);
     MockData.shopOrders.insert(0, order);
     return order;
   }
 
   @override
-  Future<ShopOrder> createDirectSale(Shop shop, List<CartLine> lines) async {
+  Future<ShopOrder> createDirectSale(
+    Shop shop,
+    List<CartLine> lines, {
+    double discount = 0,
+    String? notes,
+  }) async {
     await Future.delayed(const Duration(milliseconds: 600));
-    final order = _buildShopOrder(shop, lines,
-        status: ShopOrderStatus.delivered, invoice: true);
+    final order = _buildShopOrder(shop, lines, invoice: true);
     MockData.shopOrders.insert(0, order);
     return order;
   }
@@ -128,7 +116,74 @@ class MockOrdersRepository implements OrdersRepository {
   }
 }
 
-OrdersRepository buildOrdersRepository() => MockOrdersRepository();
+/// Hits `GET/POST /dapp/shop-orders` and mutations under `/dapp/shop-orders`.
+class ApiOrdersRepository implements OrdersRepository {
+  ApiOrdersRepository(this._client);
 
-// TODO(api): replace with ApiOrdersRepository hitting GET/POST /api/v1/dapp/orders
-// and /api/v1/dapp/shop-orders.
+  final ApiClient _client;
+
+  Map<String, dynamic> _linePayload(CartLine l) => {
+        'productId': l.product.id,
+        if (l.variant != null) 'variantId': l.variant!.id,
+        'qty': l.qty,
+        'unitPrice': l.unitPrice,
+        'discount': l.discount,
+      };
+
+  Map<String, dynamic> _body(
+      Shop shop, List<CartLine> lines, double discount, String? notes) {
+    return {
+      'shopId': shop.id,
+      'items': lines.map(_linePayload).toList(),
+      if (discount > 0) 'discount': discount,
+      if (notes != null && notes.isNotEmpty) 'notes': notes,
+    };
+  }
+
+  @override
+  Future<List<ShopOrder>> fetchShopOrders() async {
+    final data = await _client.get('/dapp/shop-orders');
+    final list = (data as List?) ?? const [];
+    return list
+        .whereType<Map>()
+        .map((e) => ShopOrder.fromJson(e.cast<String, dynamic>()))
+        .toList();
+  }
+
+  @override
+  Future<ShopOrder> createShopOrder(
+    Shop shop,
+    List<CartLine> lines, {
+    double discount = 0,
+    String? notes,
+  }) async {
+    final data = await _client.post('/dapp/shop-orders',
+        data: _body(shop, lines, discount, notes));
+    return ShopOrder.fromJson((data as Map).cast<String, dynamic>());
+  }
+
+  @override
+  Future<ShopOrder> createDirectSale(
+    Shop shop,
+    List<CartLine> lines, {
+    double discount = 0,
+    String? notes,
+  }) async {
+    final data = await _client.post('/dapp/shop-orders/direct-sale',
+        data: _body(shop, lines, discount, notes));
+    return ShopOrder.fromJson((data as Map).cast<String, dynamic>());
+  }
+
+  @override
+  Future<ShopOrder> updateShopOrderStatus(
+      String id, ShopOrderStatus status) async {
+    final data = await _client.patch(
+      '/dapp/shop-orders/$id/status',
+      data: {'status': status.apiValue},
+    );
+    return ShopOrder.fromJson((data as Map).cast<String, dynamic>());
+  }
+}
+
+OrdersRepository buildOrdersRepository(ApiClient client) =>
+    useMockApis ? MockOrdersRepository() : ApiOrdersRepository(client);

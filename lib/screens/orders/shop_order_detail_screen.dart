@@ -76,7 +76,6 @@ class _ShopOrderDetailScreenState
           .updateShopOrderStatus(widget.orderId, next);
       ref.invalidate(shopOrdersProvider);
       if (next == ShopOrderStatus.delivered) {
-        ref.invalidate(stockProvider);
         ref.invalidate(invoicesProvider);
       }
     } finally {

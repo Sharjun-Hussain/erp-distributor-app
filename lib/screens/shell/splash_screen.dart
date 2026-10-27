@@ -1,12 +1,67 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
 
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../providers/auth_provider.dart';
 import '../../theme/app_colors.dart';
 
-class SplashScreen extends StatelessWidget {
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends ConsumerState<SplashScreen> {
+  Timer? _safetyTimeoutTimer;
+  bool _hasNavigated = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Safety fallback: if anything stalls (e.g. routing race condition, DNS delay),
+    // force navigation to /login after 2.5 seconds.
+    _safetyTimeoutTimer = Timer(const Duration(milliseconds: 2500), () {
+      _evaluateAndNavigate(forceLoginIfUnknown: true);
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _evaluateAndNavigate(forceLoginIfUnknown: false);
+    });
+  }
+
+  void _evaluateAndNavigate({bool forceLoginIfUnknown = false}) {
+    if (!mounted || _hasNavigated) return;
+
+    final auth = ref.read(authProvider);
+    if (auth.status == AuthStatus.authenticated) {
+      _hasNavigated = true;
+      _safetyTimeoutTimer?.cancel();
+      context.go('/home');
+    } else if (auth.status == AuthStatus.unauthenticated || forceLoginIfUnknown) {
+      _hasNavigated = true;
+      _safetyTimeoutTimer?.cancel();
+      context.go('/login');
+    }
+  }
+
+  @override
+  void dispose() {
+    _safetyTimeoutTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    ref.listen<AuthState>(authProvider, (previous, next) {
+      if (!_hasNavigated && next.status != AuthStatus.unknown) {
+        _evaluateAndNavigate();
+      }
+    });
+
     return Scaffold(
       backgroundColor: AppColors.brand,
       body: Center(
@@ -24,7 +79,7 @@ class SplashScreen extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             const Text(
-              'Distributor',
+              'CoDesk Distribution',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 24,

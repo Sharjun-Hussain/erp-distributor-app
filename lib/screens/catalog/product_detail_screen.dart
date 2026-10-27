@@ -8,6 +8,7 @@ import '../../providers/data_providers.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/common.dart';
+import '../../widgets/pos_sheets.dart';
 
 final _productByIdProvider = Provider.family<Product?, String>((ref, id) {
   final products = ref.watch(productsProvider).valueOrNull;
@@ -29,7 +30,12 @@ class ProductDetailScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final product = ref.watch(_productByIdProvider(productId));
     final cart = ref.watch(cartProvider);
-    final localQty = product == null ? 0 : cart.qtyOf(product.id);
+    final localQty = product == null ? 0 : cart.qtyOfProduct(product.id);
+    final sellingPrice = product == null
+        ? 0.0
+        : (product.sellingPrice > 0
+            ? product.sellingPrice
+            : product.distributorPrice);
 
     if (product == null) {
       return Scaffold(
@@ -90,18 +96,18 @@ class ProductDetailScreen extends ConsumerWidget {
                     child: Column(
                       children: [
                         InfoRow(
-                          label: 'Your price',
-                          value:
-                              '${F.money(product.distributorPrice)} / ${product.unit}',
+                          label: 'Selling price',
+                          value: '${F.money(sellingPrice)} / ${product.unit}',
                           bold: true,
                         ),
+                        if (product.sellingPrice > 0)
+                          InfoRow(
+                            label: 'Cost price',
+                            value: F.money(product.distributorPrice),
+                          ),
                         InfoRow(
                           label: 'Retail price',
                           value: F.money(product.price),
-                        ),
-                        InfoRow(
-                          label: 'Available stock',
-                          value: '${F.qty(product.stock)} ${product.unit}s',
                         ),
                       ],
                     ),
@@ -112,7 +118,7 @@ class ProductDetailScreen extends ConsumerWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            'Quantity',
+                            'In cart',
                             style: GoogleFonts.inter(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
@@ -120,10 +126,13 @@ class ProductDetailScreen extends ConsumerWidget {
                             ),
                           ),
                         ),
-                        QtyStepper(
-                          qty: localQty,
-                          onChanged: (v) =>
-                              ref.read(cartProvider.notifier).setQty(product.id, v),
+                        Text(
+                          '$localQty',
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: theme.textMain,
+                          ),
                         ),
                       ],
                     ),
@@ -134,20 +143,29 @@ class ProductDetailScreen extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.all(16),
               child: PrimaryButton(
-                label: localQty > 0
-                    ? 'Update Cart • ${F.money(product.distributorPrice * localQty)}'
-                    : 'Add to Cart',
+                label: 'Add to Cart',
                 icon: Icons.add_shopping_cart_rounded,
-                onPressed: () {
-                  final notifier = ref.read(cartProvider.notifier);
-                  if (localQty == 0) notifier.add(product);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      backgroundColor: AppColors.success,
-                      content: Text('${product.name} added to cart'),
-                    ),
-                  );
-                },
+                onPressed: () => showAddToCartSheet(
+                  context,
+                  product: product,
+                  onConfirm: (variant, q, unitPrice, discount) {
+                    final notifier = ref.read(cartProvider.notifier);
+                    notifier.add(product,
+                        variant: variant, qty: q, unitPrice: unitPrice);
+                    if (discount > 0) {
+                      final key = variant == null
+                          ? product.id
+                          : '${product.id}:${variant.id}';
+                      notifier.setLineDiscount(key, discount);
+                    }
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        backgroundColor: AppColors.success,
+                        content: Text('${product.name} added to cart'),
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
           ],

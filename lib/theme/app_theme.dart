@@ -1,6 +1,5 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'app_colors.dart';
 
@@ -29,7 +28,7 @@ class AppTheme {
       toolbarHeight: 48,
       titleSpacing: 16,
       iconTheme: const IconThemeData(size: 20),
-      titleTextStyle: GoogleFonts.inter(
+      titleTextStyle: TextStyle(
         fontSize: 17,
         fontWeight: FontWeight.w700,
         color: foreground,
@@ -46,7 +45,9 @@ class AppTheme {
         ),
         primaryColor: AppColors.brand,
         scaffoldBackgroundColor: AppColors.backgroundLight,
-        textTheme: GoogleFonts.interTextTheme(),
+        textTheme: Typography.material2021(platform: TargetPlatform.android)
+            .black
+            .apply(fontFamily: 'Roboto'),
         pageTransitionsTheme: _pageTransitions,
         appBarTheme: _appBarTheme(
           background: AppColors.backgroundLight,
@@ -66,10 +67,12 @@ class AppTheme {
         ),
         primaryColor: AppColors.brand,
         scaffoldBackgroundColor: AppColors.backgroundDark,
-        textTheme: GoogleFonts.interTextTheme().apply(
-          bodyColor: AppColors.textMainDark,
-          displayColor: AppColors.textMainDark,
-        ),
+        textTheme: Typography.material2021(platform: TargetPlatform.android)
+            .white
+            .apply(
+              bodyColor: AppColors.textMainDark,
+              displayColor: AppColors.textMainDark,
+            ),
         pageTransitionsTheme: _pageTransitions,
         appBarTheme: _appBarTheme(
           background: AppColors.backgroundDark,

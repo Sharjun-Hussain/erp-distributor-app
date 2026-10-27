@@ -1,13 +1,10 @@
 import '../data/mock_data.dart';
 import '../models/finance.dart';
+import '../services/api_client.dart';
 
 abstract class FinanceRepository {
   Future<List<Invoice>> fetchInvoices();
   Future<Invoice?> fetchInvoice(String id);
-  Future<List<Payment>> fetchPayments();
-  Future<Payment> addPayment(Payment payment);
-  Future<List<LedgerEntry>> fetchLedger();
-  Future<List<StockEntry>> fetchStock();
 }
 
 class MockFinanceRepository implements FinanceRepository {
@@ -28,38 +25,35 @@ class MockFinanceRepository implements FinanceRepository {
       return null;
     }
   }
+}
+
+/// Hits `GET /dapp/invoices` and `GET /dapp/invoices/:id`.
+class ApiFinanceRepository implements FinanceRepository {
+  ApiFinanceRepository(this._client);
+
+  final ApiClient _client;
 
   @override
-  Future<List<Payment>> fetchPayments() async {
-    await Future.delayed(const Duration(milliseconds: 400));
-    final list = List.of(MockData.payments);
-    list.sort((a, b) => b.date.compareTo(a.date));
-    return list;
+  Future<List<Invoice>> fetchInvoices() async {
+    final data = await _client.get('/dapp/invoices');
+    final list = (data as List?) ?? const [];
+    return list
+        .whereType<Map>()
+        .map((e) => Invoice.fromJson(e.cast<String, dynamic>()))
+        .toList();
   }
 
   @override
-  Future<Payment> addPayment(Payment payment) async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    MockData.payments.insert(0, payment);
-    return payment;
-  }
-
-  @override
-  Future<List<LedgerEntry>> fetchLedger() async {
-    await Future.delayed(const Duration(milliseconds: 400));
-    final list = List.of(MockData.ledger);
-    list.sort((a, b) => b.date.compareTo(a.date));
-    return list;
-  }
-
-  @override
-  Future<List<StockEntry>> fetchStock() async {
-    await Future.delayed(const Duration(milliseconds: 400));
-    return List.of(MockData.stock);
+  Future<Invoice?> fetchInvoice(String id) async {
+    try {
+      final data = await _client.get('/dapp/invoices/$id');
+      return Invoice.fromJson((data as Map).cast<String, dynamic>());
+    } on ApiException catch (e) {
+      if (e.statusCode == 404) return null;
+      rethrow;
+    }
   }
 }
 
-FinanceRepository buildFinanceRepository() => MockFinanceRepository();
-
-// TODO(api): replace with ApiFinanceRepository hitting
-// /api/v1/dapp/invoices, /dapp/payments, /dapp/ledger, /dapp/stock.
+FinanceRepository buildFinanceRepository(ApiClient client) =>
+    useMockApis ? MockFinanceRepository() : ApiFinanceRepository(client);

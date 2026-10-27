@@ -5,12 +5,14 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../models/catalog.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/data_providers.dart';
 import '../../providers/repository_providers.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/common.dart';
+import '../../widgets/pos_sheets.dart';
 
 class CartScreen extends ConsumerStatefulWidget {
   const CartScreen({super.key});
@@ -22,10 +24,12 @@ class CartScreen extends ConsumerStatefulWidget {
 class _CartScreenState extends ConsumerState<CartScreen> {
   bool _submitting = false;
   final _notesController = TextEditingController();
+  final _billDiscountController = TextEditingController();
 
   @override
   void dispose() {
     _notesController.dispose();
+    _billDiscountController.dispose();
     super.dispose();
   }
 
@@ -37,22 +41,13 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     try {
       final ordersRepo = ref.read(ordersRepositoryProvider);
       switch (cart.purpose) {
-        case CartPurpose.manufacturer:
-          await ordersRepo.submitManufacturerOrder(
-              cart.lines, _notesController.text.trim());
-          ref.invalidate(manufacturerOrdersProvider);
-          ref.read(cartProvider.notifier).clear();
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              backgroundColor: AppColors.success,
-              content: Text('Order submitted to manufacturer'),
-            ),
-          );
-          context.go('/orders');
-          break;
         case CartPurpose.shopOrder:
-          await ordersRepo.createShopOrder(cart.shop!, cart.lines);
+          await ordersRepo.createShopOrder(
+            cart.shop!,
+            cart.lines,
+            discount: cart.billDiscount,
+            notes: _notesController.text.trim(),
+          );
           ref.invalidate(shopOrdersProvider);
           ref.read(cartProvider.notifier).clear();
           if (!mounted) return;
@@ -65,8 +60,12 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           context.go('/orders?segment=shop');
           break;
         case CartPurpose.directSale:
-          final order =
-              await ordersRepo.createDirectSale(cart.shop!, cart.lines);
+          final order = await ordersRepo.createDirectSale(
+            cart.shop!,
+            cart.lines,
+            discount: cart.billDiscount,
+            notes: _notesController.text.trim(),
+          );
           ref.invalidate(shopOrdersProvider);
           ref.invalidate(invoicesProvider);
           ref.read(cartProvider.notifier).clear();
@@ -94,11 +93,17 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     }
   }
 
+  Future<void> _editLine(CartLine line) async {
+    final edited = await showLineEditSheet(context, line: line);
+    if (edited == null) return;
+    final notifier = ref.read(cartProvider.notifier);
+    notifier.setUnitPrice(line.key, edited.unitPrice);
+    notifier.setLineDiscount(line.key, edited.discount);
+  }
+
   String get _title {
     final purpose = ref.watch(cartProvider).purpose;
     switch (purpose) {
-      case CartPurpose.manufacturer:
-        return 'My Cart';
       case CartPurpose.shopOrder:
         return 'Shop Order';
       case CartPurpose.directSale:
@@ -109,8 +114,6 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   String get _buttonLabel {
     final purpose = ref.watch(cartProvider).purpose;
     switch (purpose) {
-      case CartPurpose.manufacturer:
-        return 'Submit Order';
       case CartPurpose.shopOrder:
         return 'Collect Order';
       case CartPurpose.directSale:
@@ -191,94 +194,203 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                           final line = cart.lines[index];
                           return AppCard(
                             padding: const EdgeInsets.all(12),
-                            child: Row(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                ProductAvatar(
-                                  name: line.product.name,
-                                  colorHex: line.product.colorHex,
-                                  size: 42,
+                                Row(
+                                  children: [
+                                    ProductAvatar(
+                                      name: line.product.name,
+                                      colorHex: line.product.colorHex,
+                                      size: 42,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            line.displayName,
+                                            style: GoogleFonts.inter(
+                                              fontSize: 13.5,
+                                              fontWeight: FontWeight.w700,
+                                              color: theme.textMain,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            '${F.money(line.unitPrice)} × ${line.qty} ${line.product.unit}',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 12,
+                                              color: theme.textSecondary,
+                                            ),
+                                          ),
+                                          if (line.discount > 0) ...[
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              'Discount −${F.money(line.discount)}',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 11.5,
+                                                fontWeight: FontWeight.w600,
+                                                color: AppColors.warning,
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          F.money(line.lineTotal),
+                                          style: GoogleFonts.inter(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w800,
+                                            color: AppColors.brand,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        GestureDetector(
+                                          onTap: () => _editLine(line),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(LucideIcons.pencil,
+                                                  size: 13,
+                                                  color: AppColors.brand),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                'Edit',
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: AppColors.brand,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        line.product.name,
-                                        style: GoogleFonts.inter(
-                                          fontSize: 13.5,
-                                          fontWeight: FontWeight.w700,
-                                          color: theme.textMain,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      Text(
-                                        F.money(line.product.distributorPrice),
-                                        style: GoogleFonts.inter(
-                                          fontSize: 12,
-                                          color: theme.textSecondary,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        F.money(line.lineTotal),
-                                        style: GoogleFonts.inter(
-                                          fontSize: 13.5,
-                                          fontWeight: FontWeight.w800,
-                                          color: AppColors.brand,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                QtyStepper(
-                                  qty: line.qty,
-                                  onChanged: (v) => ref
-                                      .read(cartProvider.notifier)
-                                      .setQty(line.product.id, v),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    QtyStepper(
+                                      qty: line.qty,
+                                      onChanged: (v) => ref
+                                          .read(cartProvider.notifier)
+                                          .setQty(line.key, v),
+                                    ),
+                                    const Spacer(),
+                                    GestureDetector(
+                                      onTap: () => ref
+                                          .read(cartProvider.notifier)
+                                          .remove(line.key),
+                                      child: const Icon(
+                                          LucideIcons.trash2,
+                                          size: 18,
+                                          color: AppColors.danger),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
                           );
                         }
-                        // Notes card
+                        // Notes + bill discount card
                         return AppCard(
-                          child: TextField(
-                            controller: _notesController,
-                            maxLines: 2,
-                            decoration: InputDecoration(
-                              hintText: 'Notes (optional)...',
-                              hintStyle: GoogleFonts.inter(
-                                fontSize: 14,
-                                color: theme.textSecondary
-                                    .withValues(alpha: 0.7),
-                              ),
-                              prefixIcon: SizedBox(
-                                width: 40,
-                                height: 40,
-                                child: Center(
-                                  child: SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: SvgPicture.asset(
-                                        'assets/svg/field_note.svg'),
+                          child: Column(
+                            children: [
+                              TextField(
+                                controller: _notesController,
+                                maxLines: 2,
+                                decoration: InputDecoration(
+                                  hintText: 'Notes (optional)...',
+                                  hintStyle: GoogleFonts.inter(
+                                    fontSize: 14,
+                                    color: theme.textSecondary
+                                        .withValues(alpha: 0.7),
                                   ),
+                                  prefixIcon: SizedBox(
+                                    width: 40,
+                                    height: 40,
+                                    child: Center(
+                                      child: SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: SvgPicture.asset(
+                                            'assets/svg/field_note.svg'),
+                                      ),
+                                    ),
+                                  ),
+                                  prefixIconConstraints:
+                                      const BoxConstraints(
+                                          minWidth: 40, minHeight: 40),
+                                  border: InputBorder.none,
+                                  enabledBorder: InputBorder.none,
+                                  focusedBorder: InputBorder.none,
+                                  filled: false,
+                                  isDense: true,
+                                  contentPadding:
+                                      const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 12),
                                 ),
                               ),
-                              prefixIconConstraints:
-                                  const BoxConstraints(
-                                      minWidth: 40, minHeight: 40),
-                              border: InputBorder.none,
-                              enabledBorder: InputBorder.none,
-                              focusedBorder: InputBorder.none,
-                              filled: false,
-                              isDense: true,
-                              contentPadding:
-                                  const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 12),
-                            ),
+                              Divider(color: theme.glassBorder, height: 20),
+                              Row(
+                                children: [
+                                  const Icon(LucideIcons.tag,
+                                      size: 16, color: AppColors.brand),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Bill discount',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: theme.textMain,
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    width: 110,
+                                    child: TextField(
+                                      controller: _billDiscountController,
+                                      keyboardType:
+                                          const TextInputType.numberWithOptions(
+                                              decimal: true),
+                                      textAlign: TextAlign.right,
+                                      onChanged: (v) => ref
+                                          .read(cartProvider.notifier)
+                                          .setBillDiscount(
+                                              double.tryParse(v) ?? 0),
+                                      decoration: InputDecoration(
+                                        isDense: true,
+                                        prefixText: 'Rs ',
+                                        hintText: '0',
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                                horizontal: 10,
+                                                vertical: 8),
+                                        border: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                          borderSide: BorderSide(
+                                              color: theme.surfaceMutedColor),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         );
                       },
@@ -293,6 +405,49 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                 ),
                 child: Column(
                   children: [
+                    if (cart.discountTotal > 0) ...[
+                      Row(
+                        children: [
+                          Text(
+                            'Subtotal',
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              color: theme.textSecondary,
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            F.money(cart.grossTotal),
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              color: theme.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Text(
+                            'Discount',
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              color: AppColors.warning,
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            '−${F.money(cart.discountTotal)}',
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.warning,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                    ],
                     Row(
                       children: [
                         Text(

@@ -1,4 +1,25 @@
-enum InvoiceStatus { unpaid, partiallyPaid, paid }
+import '../utils/json.dart';
+
+enum InvoiceStatus {
+  unpaid,
+  partiallyPaid,
+  paid;
+
+  static InvoiceStatus fromApi(String? value) {
+    switch ((value ?? '').toLowerCase()) {
+      case 'paid':
+      case 'settled':
+        return InvoiceStatus.paid;
+      case 'partial':
+      case 'partially_paid':
+      case 'partiallypaid':
+        return InvoiceStatus.partiallyPaid;
+      case 'unpaid':
+      default:
+        return InvoiceStatus.unpaid;
+    }
+  }
+}
 
 class InvoiceParty {
   final String name;
@@ -10,6 +31,15 @@ class InvoiceParty {
     this.address = '',
     this.phone = '',
   });
+
+  factory InvoiceParty.fromJson(Map<String, dynamic>? json) {
+    if (json == null) return const InvoiceParty();
+    return InvoiceParty(
+      name: (json['name'] ?? '').toString(),
+      address: (json['address'] ?? '').toString(),
+      phone: (json['phone'] ?? '').toString(),
+    );
+  }
 }
 
 class InvoiceItem {
@@ -26,6 +56,15 @@ class InvoiceItem {
   });
 
   double get lineTotal => qty * unitPrice;
+
+  factory InvoiceItem.fromJson(Map<String, dynamic> json) {
+    return InvoiceItem(
+      productName: (json['productName'] ?? '').toString(),
+      unit: (json['unit'] ?? 'unit').toString(),
+      qty: toInt(json['qty']),
+      unitPrice: toDouble(json['unitPrice']),
+    );
+  }
 }
 
 class Invoice {
@@ -42,6 +81,9 @@ class Invoice {
   final InvoiceParty company;
   final InvoiceParty distributedBy;
 
+  final double? serverSubtotal;
+  final double? serverTotal;
+
   const Invoice({
     required this.id,
     required this.invoiceNumber,
@@ -55,70 +97,41 @@ class Invoice {
     this.status = InvoiceStatus.unpaid,
     this.company = const InvoiceParty(),
     this.distributedBy = const InvoiceParty(),
+    this.serverSubtotal,
+    this.serverTotal,
   });
 
-  double get subtotal => items.fold(0, (sum, item) => sum + item.lineTotal);
-  double get total => subtotal - discount;
-}
+  double get subtotal => serverSubtotal != null && serverSubtotal! > 0
+      ? serverSubtotal!
+      : items.fold(0, (sum, item) => sum + item.lineTotal);
 
-enum PaymentParty { manufacturer, shop }
+  double get total => serverTotal != null && serverTotal! > 0
+      ? serverTotal!
+      : (subtotal - discount < 0 ? 0 : subtotal - discount);
 
-enum PaymentMethod { cash, bankTransfer, cheque, mobile }
-
-class Payment {
-  final String id;
-  final DateTime date;
-  final PaymentParty party;
-  final String partyName;
-  final double amount;
-  final PaymentMethod method;
-  final String reference;
-  final String notes;
-
-  const Payment({
-    required this.id,
-    required this.date,
-    required this.party,
-    required this.partyName,
-    required this.amount,
-    required this.method,
-    this.reference = '',
-    this.notes = '',
-  });
-}
-
-class LedgerEntry {
-  final String id;
-  final DateTime date;
-  final String description;
-  final double debit;
-  final double credit;
-  final double balance;
-
-  const LedgerEntry({
-    required this.id,
-    required this.date,
-    required this.description,
-    this.debit = 0,
-    this.credit = 0,
-    this.balance = 0,
-  });
-}
-
-class StockEntry {
-  final String productId;
-  final String productName;
-  final String sku;
-  final String unit;
-  final double qty;
-  final DateTime lastMovement;
-
-  const StockEntry({
-    required this.productId,
-    required this.productName,
-    required this.sku,
-    required this.unit,
-    required this.qty,
-    required this.lastMovement,
-  });
+  factory Invoice.fromJson(Map<String, dynamic> json) {
+    final rawItems = (json['items'] as List?) ?? const [];
+    return Invoice(
+      id: json['id']?.toString() ?? '',
+      invoiceNumber: (json['invoiceNumber'] ?? '').toString(),
+      date: toDate(json['date']),
+      shopId: (json['shopId'] ?? '').toString(),
+      shopName: (json['shopName'] ?? '').toString(),
+      shopAddress: (json['shopAddress'] ?? '').toString(),
+      shopPhone: (json['shopPhone'] ?? '').toString(),
+      items: rawItems
+          .whereType<Map>()
+          .map((e) => InvoiceItem.fromJson(e.cast<String, dynamic>()))
+          .toList(),
+      discount: toDouble(json['discount']),
+      status: InvoiceStatus.fromApi(json['status'] as String?),
+      company: InvoiceParty.fromJson(
+          (json['company'] as Map?)?.cast<String, dynamic>()),
+      distributedBy: InvoiceParty.fromJson(
+          (json['distributedBy'] as Map?)?.cast<String, dynamic>()),
+      serverSubtotal:
+          json.containsKey('subtotal') ? toDouble(json['subtotal']) : null,
+      serverTotal: json.containsKey('total') ? toDouble(json['total']) : null,
+    );
+  }
 }

@@ -80,7 +80,7 @@ class _ShopFormScreenState extends ConsumerState<ShopFormScreen> {
         creditLimit: double.tryParse(_credit.text.trim()) ?? 0,
         balance: existing?.balance ?? 0,
       );
-      await ref.read(shopsRepositoryProvider).saveShop(shop);
+      await ref.read(shopsRepositoryProvider).saveShop(shop, isNew: !_isEdit);
       ref.invalidate(shopsProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

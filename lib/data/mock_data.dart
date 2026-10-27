@@ -4,8 +4,9 @@ import '../models/finance.dart';
 import '../models/orders.dart';
 import '../models/shop.dart';
 
-/// Swap to false once the /dapp/* backend endpoints are live.
-const bool useMockApis = true;
+/// When true the app routes through in-memory mock repositories; when false it
+/// talks to the live `/dapp/*` backend. Flip to `true` for offline/demo builds.
+const bool useMockApis = false;
 
 DateTime _daysAgo(int days) =>
     DateTime.now().subtract(Duration(days: days));
@@ -169,58 +170,6 @@ class MockData {
       address: '10 Station Road, Ragama',
       creditLimit: 75000,
       balance: 5300,
-    ),
-  ];
-
-  static final manufacturerOrders = <ManufacturerOrder>[
-    ManufacturerOrder(
-      id: 'mo-1',
-      orderNumber: 'MO-1042',
-      date: _daysAgo(1),
-      status: ManufacturerOrderStatus.confirmed,
-      items: const [
-        ManufacturerOrderItem(
-            productName: 'Premium Basmati Rice 5kg', unit: 'bag', qty: 20, unitPrice: 2850),
-        ManufacturerOrderItem(
-            productName: 'Sunflower Cooking Oil 5L', unit: 'bottle', qty: 15, unitPrice: 2400),
-      ],
-      notes: 'Deliver before Friday',
-    ),
-    ManufacturerOrder(
-      id: 'mo-2',
-      orderNumber: 'MO-1041',
-      date: _daysAgo(3),
-      status: ManufacturerOrderStatus.submitted,
-      items: const [
-        ManufacturerOrderItem(
-            productName: 'Wheat Flour 10kg', unit: 'bag', qty: 30, unitPrice: 1690),
-        ManufacturerOrderItem(
-            productName: 'White Sugar 1kg', unit: 'pack', qty: 100, unitPrice: 245),
-        ManufacturerOrderItem(
-            productName: 'Ceylon Tea 500g', unit: 'pack', qty: 40, unitPrice: 760),
-      ],
-    ),
-    ManufacturerOrder(
-      id: 'mo-3',
-      orderNumber: 'MO-1039',
-      date: _daysAgo(7),
-      status: ManufacturerOrderStatus.delivered,
-      items: const [
-        ManufacturerOrderItem(
-            productName: 'Detergent Powder 2kg', unit: 'pack', qty: 25, unitPrice: 985),
-        ManufacturerOrderItem(
-            productName: 'Milk Powder 400g', unit: 'pack', qty: 60, unitPrice: 1175),
-      ],
-    ),
-    ManufacturerOrder(
-      id: 'mo-4',
-      orderNumber: 'MO-1036',
-      date: _daysAgo(12),
-      status: ManufacturerOrderStatus.delivered,
-      items: const [
-        ManufacturerOrderItem(
-            productName: 'Coconut Milk 400ml', unit: 'can', qty: 120, unitPrice: 360),
-      ],
     ),
   ];
 
@@ -406,118 +355,4 @@ class MockData {
       ),
     ),
   ];
-
-  static final payments = <Payment>[
-    Payment(
-      id: 'pay-1',
-      date: _daysAgo(2),
-      party: PaymentParty.shop,
-      partyName: 'Quick Stop Mini Mart',
-      amount: 9180,
-      method: PaymentMethod.cash,
-    ),
-    Payment(
-      id: 'pay-2',
-      date: _daysAgo(4),
-      party: PaymentParty.manufacturer,
-      partyName: 'Inzeedo Manufacturing (Pvt) Ltd',
-      amount: 100000,
-      method: PaymentMethod.bankTransfer,
-      reference: 'REF-88213',
-    ),
-    Payment(
-      id: 'pay-3',
-      date: _daysAgo(6),
-      party: PaymentParty.shop,
-      partyName: 'Sunrise Stores',
-      amount: 10000,
-      method: PaymentMethod.cash,
-      notes: 'Part payment for INV-3382',
-    ),
-    Payment(
-      id: 'pay-4',
-      date: _daysAgo(9),
-      party: PaymentParty.manufacturer,
-      partyName: 'Inzeedo Manufacturing (Pvt) Ltd',
-      amount: 75000,
-      method: PaymentMethod.cheque,
-      reference: 'CHQ-004512',
-    ),
-  ];
-
-  static final ledger = <LedgerEntry>[
-    LedgerEntry(
-      id: 'l-1',
-      date: _daysAgo(12),
-      description: 'Opening balance',
-      balance: 192750,
-    ),
-    LedgerEntry(
-      id: 'l-2',
-      date: _daysAgo(9),
-      description: 'Payment received (Cheque CHQ-004512)',
-      credit: 75000,
-      balance: 117750,
-    ),
-    LedgerEntry(
-      id: 'l-3',
-      date: _daysAgo(6),
-      description: 'Payment from Sunrise Stores',
-      credit: 10000,
-      balance: 107750,
-    ),
-    LedgerEntry(
-      id: 'l-4',
-      date: _daysAgo(5),
-      description: 'Invoice INV-3382',
-      debit: 21900,
-      balance: 129650,
-    ),
-    LedgerEntry(
-      id: 'l-5',
-      date: _daysAgo(4),
-      description: 'Payment received (Bank REF-88213)',
-      credit: 100000,
-      balance: 29650,
-    ),
-    LedgerEntry(
-      id: 'l-6',
-      date: _daysAgo(3),
-      description: 'Invoice INV-3385',
-      debit: 11180,
-      balance: 40830,
-    ),
-    LedgerEntry(
-      id: 'l-7',
-      date: _daysAgo(2),
-      description: 'Payment from Quick Stop Mini Mart',
-      credit: 9180,
-      balance: 31650,
-    ),
-    LedgerEntry(
-      id: 'l-8',
-      date: _daysAgo(1),
-      description: 'Invoice INV-3388',
-      debit: 51300,
-      balance: 82950,
-    ),
-    LedgerEntry(
-      id: 'l-9',
-      date: _daysAgo(1),
-      description: 'Invoice INV-3387',
-      debit: 16350,
-      balance: 99300,
-    ),
-  ];
-
-  static final stock = products
-      .map((p) => StockEntry(
-            productId: p.id,
-            productName: p.name,
-            sku: p.sku,
-            unit: p.unit,
-            qty: p.stock,
-            lastMovement: _daysAgo(p.id.hashCode % 6),
-          ))
-      .toList();
 }

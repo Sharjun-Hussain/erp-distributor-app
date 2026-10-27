@@ -7,7 +7,6 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../models/orders.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/cart_provider.dart';
 import '../../providers/data_providers.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/formatters.dart';
@@ -23,7 +22,6 @@ class HomeScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final user = ref.watch(authProvider).user;
     final shopOrders = ref.watch(shopOrdersProvider);
-    final mfrOrders = ref.watch(manufacturerOrdersProvider);
 
     final pendingShopOrders = shopOrders.maybeWhen(
       data: (list) => list
@@ -33,11 +31,6 @@ class HomeScreen extends ConsumerWidget {
           .length,
       orElse: () => 0,
     );
-    final pendingMfrOrders = mfrOrders.maybeWhen(
-      data: (list) =>
-          list.where((o) => o.status != ManufacturerOrderStatus.delivered).length,
-      orElse: () => 0,
-    );
 
     return Scaffold(
       backgroundColor: theme.bgColor,
@@ -45,7 +38,6 @@ class HomeScreen extends ConsumerWidget {
         child: RefreshIndicator(
           onRefresh: () async {
             ref.invalidate(shopOrdersProvider);
-            ref.invalidate(manufacturerOrdersProvider);
           },
           child: ListView(
             padding: const EdgeInsets.all(16),
@@ -162,14 +154,9 @@ class HomeScreen extends ConsumerWidget {
                       child: _quickAction(
                         context,
                         theme,
-                        icon: LucideIcons.packagePlus,
-                        label: 'Order Items',
-                        onTap: () {
-                          ref
-                              .read(cartProvider.notifier)
-                              .startManufacturerOrder();
-                          context.go('/catalog');
-                        },
+                        icon: LucideIcons.clipboardPlus,
+                        label: 'Collect Order',
+                        onTap: () => context.go('/orders/new-shop-order'),
                       ),
                     ),
                   ),
@@ -181,9 +168,9 @@ class HomeScreen extends ConsumerWidget {
                       child: _quickAction(
                         context,
                         theme,
-                        icon: LucideIcons.clipboardPlus,
-                        label: 'Collect Order',
-                        onTap: () => context.go('/orders/new-shop-order'),
+                        icon: LucideIcons.zap,
+                        label: 'Direct Sale',
+                        onTap: () => context.go('/orders/direct-sale'),
                       ),
                     ),
                   ),
@@ -195,9 +182,9 @@ class HomeScreen extends ConsumerWidget {
                       child: _quickAction(
                         context,
                         theme,
-                        icon: LucideIcons.zap,
-                        label: 'Direct Sale',
-                        onTap: () => context.go('/orders/direct-sale'),
+                        icon: LucideIcons.store,
+                        label: 'Shops',
+                        onTap: () => context.go('/shops'),
                       ),
                     ),
                   ),
@@ -206,34 +193,15 @@ class HomeScreen extends ConsumerWidget {
               const SizedBox(height: 20),
 
               // Stats
-              Row(
-                children: [
-                  Expanded(
-                    child: EntranceFade(
-                      delay: 360.ms,
-                      slideY: 0.12,
-                      child: _statCard(
-                        theme,
-                        title: 'Open manufacturer orders',
-                        value: '$pendingMfrOrders',
-                        color: AppColors.info,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: EntranceFade(
-                      delay: 420.ms,
-                      slideY: 0.12,
-                      child: _statCard(
-                        theme,
-                        title: 'Open shop orders',
-                        value: '$pendingShopOrders',
-                        color: AppColors.warning,
-                      ),
-                    ),
-                  ),
-                ],
+              EntranceFade(
+                delay: 360.ms,
+                slideY: 0.12,
+                child: _statCard(
+                  theme,
+                  title: 'Open shop orders',
+                  value: '$pendingShopOrders',
+                  color: AppColors.warning,
+                ),
               ),
               const SizedBox(height: 20),
 

@@ -2,6 +2,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/mock_data.dart';
 import '../models/auth.dart';
+import '../services/api_client.dart';
 
 abstract class AuthRepository {
   Future<DistributorUser> login(String email, String password);
@@ -25,7 +26,8 @@ class MockAuthRepository implements AuthRepository {
       throw const AuthException('Invalid email or password');
     }
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_tokenKey, 'mock-token-${DateTime.now().millisecondsSinceEpoch}');
+    await prefs.setString(
+        _tokenKey, 'mock-token-${DateTime.now().millisecondsSinceEpoch}');
     return MockData.distributorUser;
   }
 
@@ -62,13 +64,83 @@ class MockAuthRepository implements AuthRepository {
 
 class AuthException implements Exception {
   final String message;
-  const AuthException(this.message);
+  final bool requires2fa;
+  const AuthException(this.message, {this.requires2fa = false});
 
   @override
   String toString() => message;
 }
 
-AuthRepository buildAuthRepository() => MockAuthRepository();
+/// Talks to `/api/v1/auth/distributor-*` and `/api/v1/dapp/me`.
+class ApiAuthRepository implements AuthRepository {
+  ApiAuthRepository(this._client);
 
-// TODO(api): replace with ApiAuthRepository hitting
-// POST /api/v1/auth/distributor-login, GET /auth/me, POST /auth/logout.
+  final ApiClient _client;
+
+  @override
+  Future<DistributorUser> login(String email, String password) async {
+    try {
+      final data = await _client.post(
+        '/auth/distributor-login',
+        data: {'email': email, 'password': password},
+      );
+      final map = (data as Map).cast<String, dynamic>();
+      final access = map['auth_token'] as String?;
+      final refresh = map['refresh_token'] as String?;
+      if (access == null || access.isEmpty) {
+        throw const AuthException('Login failed. Please try again.');
+      }
+      await TokenStore.instance.save(access: access, refresh: refresh);
+      final userJson = (map['user'] as Map?)?.cast<String, dynamic>();
+      if (userJson == null) {
+        return me();
+      }
+      return DistributorUser.fromJson(userJson);
+    } on ApiException catch (e) {
+      throw AuthException(e.message, requires2fa: e.requires2fa);
+    }
+  }
+
+  @override
+  Future<DistributorUser> me() async {
+    try {
+      final data = await _client.get('/dapp/me');
+      final map = (data as Map).cast<String, dynamic>();
+      final userJson = (map['user'] as Map?)?.cast<String, dynamic>();
+      if (userJson == null) {
+        throw const AuthException('Could not load your profile.');
+      }
+      return DistributorUser.fromJson(userJson);
+    } on ApiException catch (e) {
+      throw AuthException(e.message);
+    }
+  }
+
+  @override
+  Future<void> logout(String? token) async {
+    final refresh = await TokenStore.instance.readRefresh();
+    try {
+      await _client.post(
+        '/dapp/logout',
+        data: {'refresh_token': ?refresh},
+      );
+    } on ApiException {
+      // Best-effort: always clear the local session.
+    } finally {
+      await TokenStore.instance.clear();
+    }
+  }
+
+  @override
+  Future<String?> readToken() => TokenStore.instance.readAccess();
+
+  @override
+  Future<void> writeToken(String token) =>
+      TokenStore.instance.save(access: token);
+
+  @override
+  Future<void> clearToken() => TokenStore.instance.clear();
+}
+
+AuthRepository buildAuthRepository(ApiClient client) =>
+    useMockApis ? MockAuthRepository() : ApiAuthRepository(client);

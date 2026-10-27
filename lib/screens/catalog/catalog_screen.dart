@@ -12,6 +12,7 @@ import '../../providers/data_providers.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/common.dart';
+import '../../widgets/pos_sheets.dart';
 
 class CatalogScreen extends ConsumerStatefulWidget {
   const CatalogScreen({super.key});
@@ -191,7 +192,9 @@ class _ProductTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final cart = ref.watch(cartProvider);
-    final qty = cart.qtyOf(product.id);
+    final qty = cart.qtyOfProduct(product.id);
+    final price =
+        product.sellingPrice > 0 ? product.sellingPrice : product.distributorPrice;
 
     return AppCard(
       padding: const EdgeInsets.all(12),
@@ -219,27 +222,83 @@ class _ProductTile extends ConsumerWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${product.sku} • Stock: ${F.qty(product.stock)} ${product.unit}s',
+                  '${product.sku} • ${product.unit}',
                   style: GoogleFonts.inter(
                     fontSize: 11.5,
                     color: theme.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 6),
-                Text(
-                  F.money(product.distributorPrice),
-                  style: GoogleFonts.inter(
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.brand,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      F.money(price),
+                      style: GoogleFonts.inter(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.brand,
+                      ),
+                    ),
+                    if (product.variants.length > 1) ...[
+                      const SizedBox(width: 6),
+                      Text(
+                        '· ${product.variants.length} variants',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          color: theme.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),
           ),
-          QtyStepper(
-            qty: qty,
-            onChanged: (v) => ref.read(cartProvider.notifier).setQty(product.id, v),
+          if (qty > 0)
+            Container(
+              margin: const EdgeInsets.only(right: 8),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.brand.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                '$qty in cart',
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.brand,
+                ),
+              ),
+            ),
+          GestureDetector(
+            onTap: () => showAddToCartSheet(
+              context,
+              product: product,
+              onConfirm: (variant, q, unitPrice, discount) {
+                ref.read(cartProvider.notifier).add(
+                      product,
+                      variant: variant,
+                      qty: q,
+                      unitPrice: unitPrice,
+                    );
+                if (discount > 0) {
+                  final key =
+                      variant == null ? product.id : '${product.id}:${variant.id}';
+                  ref.read(cartProvider.notifier).setLineDiscount(key, discount);
+                }
+              },
+            ),
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: AppColors.brand,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.add_rounded, color: Colors.white, size: 22),
+            ),
           ),
         ],
       ),
