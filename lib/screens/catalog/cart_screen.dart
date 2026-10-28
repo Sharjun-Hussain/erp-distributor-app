@@ -14,6 +14,7 @@ import '../../theme/app_colors.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/common.dart';
 import '../../widgets/pos_sheets.dart';
+import '../orders/widgets/payment_collection_sheet.dart';
 
 class CartScreen extends ConsumerStatefulWidget {
   const CartScreen({super.key});
@@ -228,54 +229,86 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     Shop? targetShop = cart.shop;
     if (targetShop == null) {
       targetShop = await _pickShop(context);
-      if (targetShop == null) {
+      if (targetShop == null || !mounted) {
         return; // User cancelled shop selection
       }
       ref.read(cartProvider.notifier).setShop(targetShop);
     }
 
+    if (cart.purpose == CartPurpose.directSale) {
+      final payment = await PaymentCollectionSheet.show(
+        context,
+        orderTotal: cart.total,
+        shopName: targetShop.name,
+        title: 'Direct Sale Payment',
+      );
+      if (payment == null || !mounted) return;
+
+      setState(() => _submitting = true);
+      try {
+        final ordersRepo = ref.read(ordersRepositoryProvider);
+        final order = await ordersRepo.createDirectSale(
+          targetShop,
+          cart.lines,
+          discount: cart.billDiscount,
+          notes: _notesController.text.trim(),
+          cashAmount: payment.cashAmount,
+          bankAmount: payment.bankAmount,
+          bankRef: payment.bankRef,
+          chequeAmount: payment.chequeAmount,
+          chequeNo: payment.chequeNo,
+          chequeDate: payment.chequeDate,
+          chequeBank: payment.chequeBank,
+        );
+        ref.invalidate(shopOrdersProvider);
+        ref.invalidate(invoicesProvider);
+        ref.read(cartProvider.notifier).clear();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: AppColors.success,
+            content: Text('Direct sale & invoice generated successfully'),
+          ),
+        );
+        context.go('/orders/shop/${order.id}');
+      } catch (e, stack) {
+        debugPrint('[Cart] Submit error: $e\n$stack');
+        if (mounted) {
+          final message = e is ApiException
+              ? e.message
+              : 'Could not submit: ${e.toString().replaceAll("Exception: ", "")}';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: AppColors.danger,
+              content: Text(message),
+            ),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _submitting = false);
+      }
+      return;
+    }
+
     setState(() => _submitting = true);
     try {
       final ordersRepo = ref.read(ordersRepositoryProvider);
-      switch (cart.purpose) {
-        case CartPurpose.shopOrder:
-          await ordersRepo.createShopOrder(
-            targetShop,
-            cart.lines,
-            discount: cart.billDiscount,
-            notes: _notesController.text.trim(),
-          );
-          ref.invalidate(shopOrdersProvider);
-          ref.read(cartProvider.notifier).clear();
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              backgroundColor: AppColors.success,
-              content: Text('Shop order collected successfully'),
-            ),
-          );
-          context.go('/orders?segment=shop');
-          break;
-        case CartPurpose.directSale:
-          final order = await ordersRepo.createDirectSale(
-            targetShop,
-            cart.lines,
-            discount: cart.billDiscount,
-            notes: _notesController.text.trim(),
-          );
-          ref.invalidate(shopOrdersProvider);
-          ref.invalidate(invoicesProvider);
-          ref.read(cartProvider.notifier).clear();
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              backgroundColor: AppColors.success,
-              content: Text('Invoice generated successfully'),
-            ),
-          );
-          context.go('/orders/shop/${order.id}');
-          break;
-      }
+      await ordersRepo.createShopOrder(
+        targetShop,
+        cart.lines,
+        discount: cart.billDiscount,
+        notes: _notesController.text.trim(),
+      );
+      ref.invalidate(shopOrdersProvider);
+      ref.read(cartProvider.notifier).clear();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: AppColors.success,
+          content: Text('Shop order collected successfully'),
+        ),
+      );
+      context.go('/orders?segment=shop');
     } catch (e, stack) {
       debugPrint('[Cart] Submit error: $e\n$stack');
       if (mounted) {

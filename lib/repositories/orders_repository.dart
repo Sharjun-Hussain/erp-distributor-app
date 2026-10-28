@@ -17,8 +17,25 @@ abstract class OrdersRepository {
     List<CartLine> lines, {
     double discount = 0,
     String? notes,
+    double cashAmount = 0,
+    double bankAmount = 0,
+    String? bankRef,
+    double chequeAmount = 0,
+    String? chequeNo,
+    DateTime? chequeDate,
+    String? chequeBank,
   });
-  Future<ShopOrder> updateShopOrderStatus(String id, ShopOrderStatus status);
+  Future<ShopOrder> updateShopOrderStatus(
+    String id,
+    ShopOrderStatus status, {
+    double? cashAmount,
+    double? bankAmount,
+    String? bankRef,
+    double? chequeAmount,
+    String? chequeNo,
+    DateTime? chequeDate,
+    String? chequeBank,
+  });
 }
 
 class MockOrdersRepository implements OrdersRepository {
@@ -81,6 +98,13 @@ class MockOrdersRepository implements OrdersRepository {
     List<CartLine> lines, {
     double discount = 0,
     String? notes,
+    double cashAmount = 0,
+    double bankAmount = 0,
+    String? bankRef,
+    double chequeAmount = 0,
+    String? chequeNo,
+    DateTime? chequeDate,
+    String? chequeBank,
   }) async {
     await Future.delayed(const Duration(milliseconds: 600));
     final order = _buildShopOrder(shop, lines, invoice: true);
@@ -90,7 +114,16 @@ class MockOrdersRepository implements OrdersRepository {
 
   @override
   Future<ShopOrder> updateShopOrderStatus(
-      String id, ShopOrderStatus status) async {
+    String id,
+    ShopOrderStatus status, {
+    double? cashAmount,
+    double? bankAmount,
+    String? bankRef,
+    double? chequeAmount,
+    String? chequeNo,
+    DateTime? chequeDate,
+    String? chequeBank,
+  }) async {
     await Future.delayed(const Duration(milliseconds: 400));
     final index = MockData.shopOrders.indexWhere((o) => o.id == id);
     if (index == -1) throw Exception('Order not found');
@@ -168,18 +201,67 @@ class ApiOrdersRepository implements OrdersRepository {
     List<CartLine> lines, {
     double discount = 0,
     String? notes,
+    double cashAmount = 0,
+    double bankAmount = 0,
+    String? bankRef,
+    double chequeAmount = 0,
+    String? chequeNo,
+    DateTime? chequeDate,
+    String? chequeBank,
   }) async {
-    final data = await _client.post('/dapp/shop-orders/direct-sale',
-        data: _body(shop, lines, discount, notes));
+    final body = _body(shop, lines, discount, notes);
+    if (cashAmount > 0) body['cashAmount'] = cashAmount;
+    if (bankAmount > 0) {
+      body['bankAmount'] = bankAmount;
+      if (bankRef != null && bankRef.isNotEmpty) body['bankRef'] = bankRef;
+    }
+    if (chequeAmount > 0) {
+      body['chequeAmount'] = chequeAmount;
+      if (chequeNo != null && chequeNo.isNotEmpty) body['chequeNo'] = chequeNo;
+      if (chequeDate != null) {
+        body['chequeDate'] = chequeDate.toIso8601String().split('T')[0];
+      }
+      if (chequeBank != null && chequeBank.isNotEmpty) {
+        body['chequeBank'] = chequeBank;
+      }
+    }
+
+    final data = await _client.post('/dapp/shop-orders/direct-sale', data: body);
     return ShopOrder.fromJson((data as Map).cast<String, dynamic>());
   }
 
   @override
   Future<ShopOrder> updateShopOrderStatus(
-      String id, ShopOrderStatus status) async {
+    String id,
+    ShopOrderStatus status, {
+    double? cashAmount,
+    double? bankAmount,
+    String? bankRef,
+    double? chequeAmount,
+    String? chequeNo,
+    DateTime? chequeDate,
+    String? chequeBank,
+  }) async {
+    final Map<String, dynamic> body = {'status': status.apiValue};
+    if (cashAmount != null && cashAmount > 0) body['cashAmount'] = cashAmount;
+    if (bankAmount != null && bankAmount > 0) {
+      body['bankAmount'] = bankAmount;
+      if (bankRef != null && bankRef.isNotEmpty) body['bankRef'] = bankRef;
+    }
+    if (chequeAmount != null && chequeAmount > 0) {
+      body['chequeAmount'] = chequeAmount;
+      if (chequeNo != null && chequeNo.isNotEmpty) body['chequeNo'] = chequeNo;
+      if (chequeDate != null) {
+        body['chequeDate'] = chequeDate.toIso8601String().split('T')[0];
+      }
+      if (chequeBank != null && chequeBank.isNotEmpty) {
+        body['chequeBank'] = chequeBank;
+      }
+    }
+
     final data = await _client.patch(
       '/dapp/shop-orders/$id/status',
-      data: {'status': status.apiValue},
+      data: body,
     );
     return ShopOrder.fromJson((data as Map).cast<String, dynamic>());
   }

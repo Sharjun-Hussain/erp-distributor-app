@@ -13,6 +13,7 @@ import '../../theme/app_colors.dart';
 import '../../utils/formatters.dart';
 import '../../utils/status_colors.dart';
 import '../../widgets/common.dart';
+import 'widgets/payment_collection_sheet.dart';
 
 final _shopOrderByIdProvider = Provider.family<ShopOrder?, String>((ref, id) {
   final orders = ref.watch(shopOrdersProvider).valueOrNull;
@@ -70,11 +71,34 @@ class _ShopOrderDetailScreenState
   Future<void> _advance() async {
     final next = _nextStatus;
     if (next == null || _busy) return;
+
+    PaymentSplitResult? payment;
+    if (next == ShopOrderStatus.delivered) {
+      final order = ref.read(_shopOrderByIdProvider(widget.orderId));
+      if (order != null) {
+        payment = await PaymentCollectionSheet.show(
+          context,
+          orderTotal: order.total,
+          shopName: order.shopName,
+          title: 'Delivery Collection',
+        );
+        if (payment == null) return; // Driver cancelled sheet
+      }
+    }
+
     setState(() => _busy = true);
     try {
-      await ref
-          .read(ordersRepositoryProvider)
-          .updateShopOrderStatus(widget.orderId, next);
+      await ref.read(ordersRepositoryProvider).updateShopOrderStatus(
+            widget.orderId,
+            next,
+            cashAmount: payment?.cashAmount,
+            bankAmount: payment?.bankAmount,
+            bankRef: payment?.bankRef,
+            chequeAmount: payment?.chequeAmount,
+            chequeNo: payment?.chequeNo,
+            chequeDate: payment?.chequeDate,
+            chequeBank: payment?.chequeBank,
+          );
       ref.invalidate(shopOrdersProvider);
       if (next == ShopOrderStatus.delivered) {
         ref.invalidate(invoicesProvider);
@@ -949,8 +973,172 @@ class _ShopOrderDetailScreenState
               ),
             ],
           ),
+
+          // Payment Methods Breakdown (if any collected)
+          if (order.paidAmount > 0 || order.cashAmount > 0 || order.bankAmount > 0 || order.chequeAmount > 0) ...[
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.surfaceColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: theme.glassBorder),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'COLLECTED PAYMENTS',
+                    style: GoogleFonts.inter(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                      color: theme.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  if (order.payments.isNotEmpty) ...[
+                    for (int i = 0; i < order.payments.length; i++) ...[
+                      if (i > 0) const SizedBox(height: 6),
+                      () {
+                        final p = order.payments[i];
+                        final icon = p.isCash
+                            ? LucideIcons.banknote
+                            : p.isCheque
+                                ? LucideIcons.fileText
+                                : LucideIcons.building2;
+                        final color = p.isCash
+                            ? const Color(0xFF10B981)
+                            : p.isCheque
+                                ? const Color(0xFF8B5CF6)
+                                : const Color(0xFF0284C7);
+                        final label = p.isCash
+                            ? 'Cash (${p.receiptNumber})'
+                            : p.isCheque
+                                ? 'Cheque #${p.chequeNo.isNotEmpty ? p.chequeNo : p.receiptNumber}'
+                                : p.bankRef.isNotEmpty
+                                    ? 'Bank (${p.bankRef})'
+                                    : 'Bank Transfer (${p.receiptNumber})';
+                        final subtitle = p.isCheque && p.chequeDate != null
+                            ? 'PDC Due: ${F.shortDate(p.chequeDate!)} (${p.chequeStatus.toUpperCase()})'
+                            : null;
+                        return _buildPaymentLine(
+                          theme,
+                          icon: icon,
+                          label: label,
+                          amount: p.amount,
+                          color: color,
+                          subtitle: subtitle,
+                        );
+                      }(),
+                    ],
+                  ] else ...[
+                    if (order.cashAmount > 0)
+                      _buildPaymentLine(
+                        theme,
+                        icon: LucideIcons.banknote,
+                        label: 'Cash Received',
+                        amount: order.cashAmount,
+                        color: const Color(0xFF10B981),
+                      ),
+                    if (order.bankAmount > 0) ...[
+                      const SizedBox(height: 6),
+                      _buildPaymentLine(
+                        theme,
+                        icon: LucideIcons.building2,
+                        label: order.bankRef.isNotEmpty
+                            ? 'Bank (${order.bankRef})'
+                            : 'Bank Transfer',
+                        amount: order.bankAmount,
+                        color: const Color(0xFF0284C7),
+                      ),
+                    ],
+                    if (order.chequeAmount > 0) ...[
+                      const SizedBox(height: 6),
+                      _buildPaymentLine(
+                        theme,
+                        icon: LucideIcons.fileText,
+                        label: order.chequeNo.isNotEmpty
+                            ? 'Cheque #${order.chequeNo}'
+                            : 'Cheque Payment',
+                        amount: order.chequeAmount,
+                        color: const Color(0xFF8B5CF6),
+                        subtitle: order.chequeDate != null
+                            ? 'PDC Due: ${F.shortDate(order.chequeDate!)} (${order.chequeStatus.toUpperCase()})'
+                            : null,
+                      ),
+                    ],
+                  ],
+                  if (order.balanceDue > 0) ...[
+                    const SizedBox(height: 6),
+                    _buildPaymentLine(
+                      theme,
+                      icon: LucideIcons.alertCircle,
+                      label: 'Remaining Balance (Credit Due)',
+                      amount: order.balanceDue,
+                      color: AppColors.danger,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _buildPaymentLine(
+    ThemeData theme, {
+    required IconData icon,
+    required String label,
+    required double amount,
+    required Color color,
+    String? subtitle,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                label,
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: theme.textMain,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Text(
+              F.money(amount),
+              style: GoogleFonts.inter(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+        if (subtitle != null) ...[
+          const SizedBox(height: 2),
+          Padding(
+            padding: const EdgeInsets.only(left: 20),
+            child: Text(
+              subtitle,
+              style: GoogleFonts.inter(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w500,
+                color: theme.textSecondary,
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 
