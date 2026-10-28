@@ -17,8 +17,14 @@ class InvoicePrintService {
   final ApiClient _api;
   final PrinterSettings _printerSettings;
   final BluetoothPrinterSettings _bluetoothSettings;
+  final ReceiptLayoutSettings _receiptLayout;
 
-  InvoicePrintService(this._api, this._printerSettings, this._bluetoothSettings);
+  InvoicePrintService(
+    this._api,
+    this._printerSettings,
+    this._bluetoothSettings,
+    this._receiptLayout,
+  );
 
   /// Downloads or opens native A4 invoice PDF generated from backend
   Future<void> handleA4Print(BuildContext context, Invoice invoice) async {
@@ -153,6 +159,7 @@ class InvoicePrintService {
           distName: distName,
           distPhone: distPhone,
           printerModel: _bluetoothSettings.printerModel,
+          receiptLayout: _receiptLayout,
         );
 
         if (context.mounted) {
@@ -204,6 +211,7 @@ class InvoicePrintService {
           printerIp: _printerSettings.printerIp,
           printerPort: _printerSettings.printerPort,
           printerModel: _printerSettings.printerModel,
+          receiptLayout: _receiptLayout,
         );
 
         if (context.mounted) {
@@ -266,5 +274,6 @@ final invoicePrintServiceProvider = Provider<InvoicePrintService>((ref) {
   final api = ApiClient();
   final printerSettings = ref.watch(printerSettingsProvider);
   final bluetoothSettings = ref.watch(bluetoothPrinterProvider);
-  return InvoicePrintService(api, printerSettings, bluetoothSettings);
+  final receiptLayout = ref.watch(receiptLayoutSettingsProvider);
+  return InvoicePrintService(api, printerSettings, bluetoothSettings, receiptLayout);
 });

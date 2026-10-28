@@ -4,6 +4,7 @@ import 'package:esc_pos_utils/esc_pos_utils.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 
 import '../models/finance.dart';
+import '../providers/printer_providers.dart';
 import '../utils/formatters.dart';
 
 class ReceiptPrinterService {
@@ -101,12 +102,15 @@ class ReceiptPrinterService {
     required String printerIp,
     required int printerPort,
     required String printerModel,
+    ReceiptLayoutSettings? receiptLayout,
   }) async {
     if (kIsWeb || printerIp.isEmpty) return false;
 
     try {
+      final layout = receiptLayout ?? const ReceiptLayoutSettings();
       final profile = await CapabilityProfile.load();
-      final printer = NetworkPrinter(PaperSize.mm80, profile);
+      final paperSize = layout.paperWidth == '58mm' ? PaperSize.mm58 : PaperSize.mm80;
+      final printer = NetworkPrinter(paperSize, profile);
 
       final PosPrintResult res = await printer.connect(
         printerIp,
@@ -118,29 +122,37 @@ class ReceiptPrinterService {
       await Future<void>.delayed(const Duration(milliseconds: 200));
 
       // ─── Header ───
-      applySam4sAlign(printer, printerModel, PosAlign.center);
-      final headerName = companyName.isNotEmpty ? companyName : 'DISTRIBUTOR ERP';
-      printer.text(
-        headerName.toUpperCase(),
-        styles: const PosStyles(
-          height: PosTextSize.size2,
-          width: PosTextSize.size1,
-          bold: true,
-          align: PosAlign.center,
-        ),
-      );
+      if (layout.showHeader) {
+        applySam4sAlign(printer, printerModel, PosAlign.center);
+        final headerName = companyName.isNotEmpty ? companyName : 'DISTRIBUTOR ERP';
+        printer.text(
+          headerName.toUpperCase(),
+          styles: const PosStyles(
+            height: PosTextSize.size2,
+            width: PosTextSize.size1,
+            bold: true,
+            align: PosAlign.center,
+          ),
+        );
 
-      if (companyAddress.isNotEmpty) {
-        printer.text(
-          companyAddress.toUpperCase(),
-          styles: const PosStyles(align: PosAlign.center, bold: true),
-        );
-      }
-      if (companyPhone.isNotEmpty) {
-        printer.text(
-          'TEL: $companyPhone',
-          styles: const PosStyles(align: PosAlign.center, bold: true),
-        );
+        if (companyAddress.isNotEmpty) {
+          printer.text(
+            companyAddress.toUpperCase(),
+            styles: const PosStyles(align: PosAlign.center, bold: true),
+          );
+        }
+        if (companyPhone.isNotEmpty) {
+          printer.text(
+            'TEL: $companyPhone',
+            styles: const PosStyles(align: PosAlign.center, bold: true),
+          );
+        }
+        if (layout.headerText.isNotEmpty) {
+          printer.text(
+            layout.headerText,
+            styles: const PosStyles(align: PosAlign.center, bold: true),
+          );
+        }
       }
 
       printer.hr();
@@ -290,7 +302,7 @@ class ReceiptPrinterService {
       printer.hr();
 
       // ─── Distributed By ───
-      if (distName.isNotEmpty) {
+      if (layout.showDistributorInfo && distName.isNotEmpty) {
         printer.row([
           PosColumn(text: 'DISTRIBUTED BY:', width: 6, styles: const PosStyles(bold: true)),
           PosColumn(
@@ -313,37 +325,45 @@ class ReceiptPrinterService {
       }
 
       // ─── Footer ───
-      applySam4sAlign(printer, printerModel, PosAlign.center);
-      printer.text(
-        'THANK YOU FOR YOUR BUSINESS!',
-        styles: const PosStyles(
-          align: PosAlign.center,
-          bold: true,
-          height: PosTextSize.size2,
-        ),
-      );
-      printer.feed(1);
-
-      // Barcode
-      try {
-        final cleanInvoice = invoice.invoiceNumber.toUpperCase();
-        printer.barcode(Barcode.code39(cleanInvoice.codeUnits));
-      } catch (_) {
+      if (layout.showFooterText && layout.footerText.isNotEmpty) {
+        applySam4sAlign(printer, printerModel, PosAlign.center);
         printer.text(
-          invoice.invoiceNumber,
-          styles: const PosStyles(align: PosAlign.center, bold: true),
+          layout.footerText.toUpperCase(),
+          styles: const PosStyles(
+            align: PosAlign.center,
+            bold: true,
+            height: PosTextSize.size1,
+          ),
         );
+        printer.feed(1);
       }
 
-      printer.feed(1);
-      printer.text(
-        'ERP SYSTEM FROM INZEEDO',
-        styles: const PosStyles(align: PosAlign.center, bold: true),
-      );
-      printer.text(
-        '(c) ${DateTime.now().year} INZEEDO.LK | +94785706441',
-        styles: const PosStyles(align: PosAlign.center, bold: true),
-      );
+      // ─── Return / Refund Policy ───
+      if (layout.showRefundPolicy && layout.refundPolicy.isNotEmpty) {
+        applySam4sAlign(printer, printerModel, PosAlign.center);
+        printer.text(
+          layout.refundPolicy,
+          styles: const PosStyles(
+            align: PosAlign.center,
+            bold: false,
+          ),
+        );
+        printer.feed(1);
+      }
+
+      // Barcode
+      if (layout.showBarcode) {
+        try {
+          final cleanInvoice = invoice.invoiceNumber.toUpperCase();
+          printer.barcode(Barcode.code39(cleanInvoice.codeUnits));
+        } catch (_) {
+          printer.text(
+            invoice.invoiceNumber,
+            styles: const PosStyles(align: PosAlign.center, bold: true),
+          );
+        }
+        printer.feed(1);
+      }
 
       printer.feed(2);
       printer.cut();

@@ -493,7 +493,7 @@ class UpdateService {
                   border: Border.all(color: theme.glassBorder),
                 ),
                 child: Text(
-                  'A new version of CoDesk Distribution is available with performance improvements, enhanced shop syncing, and vital security patches.',
+                  'A new version of CoDesk DMS is available with performance improvements, enhanced shop syncing, and vital security patches.',
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     color: theme.textSecondary,

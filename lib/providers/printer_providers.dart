@@ -138,3 +138,113 @@ final bluetoothPrinterProvider =
         BluetoothPrinterSettings>((ref) {
   return BluetoothPrinterSettingsNotifier();
 });
+
+class ReceiptLayoutSettings {
+  final String paperWidth; // '58mm' or '80mm'
+  final bool showHeader;
+  final String headerText;
+  final bool showFooterText;
+  final String footerText;
+  final bool showRefundPolicy;
+  final String refundPolicy;
+  final bool showBarcode;
+  final bool showDistributorInfo;
+
+  const ReceiptLayoutSettings({
+    this.paperWidth = '80mm',
+    this.showHeader = true,
+    this.headerText = '',
+    this.showFooterText = true,
+    this.footerText = 'THANK YOU FOR YOUR BUSINESS!',
+    this.showRefundPolicy = false,
+    this.refundPolicy = 'Returns accepted within 7 days with original receipt.',
+    this.showBarcode = true,
+    this.showDistributorInfo = true,
+  });
+
+  ReceiptLayoutSettings copyWith({
+    String? paperWidth,
+    bool? showHeader,
+    String? headerText,
+    bool? showFooterText,
+    String? footerText,
+    bool? showRefundPolicy,
+    String? refundPolicy,
+    bool? showBarcode,
+    bool? showDistributorInfo,
+  }) {
+    return ReceiptLayoutSettings(
+      paperWidth: paperWidth ?? this.paperWidth,
+      showHeader: showHeader ?? this.showHeader,
+      headerText: headerText ?? this.headerText,
+      showFooterText: showFooterText ?? this.showFooterText,
+      footerText: footerText ?? this.footerText,
+      showRefundPolicy: showRefundPolicy ?? this.showRefundPolicy,
+      refundPolicy: refundPolicy ?? this.refundPolicy,
+      showBarcode: showBarcode ?? this.showBarcode,
+      showDistributorInfo: showDistributorInfo ?? this.showDistributorInfo,
+    );
+  }
+}
+
+class ReceiptLayoutSettingsNotifier extends StateNotifier<ReceiptLayoutSettings> {
+  ReceiptLayoutSettingsNotifier() : super(const ReceiptLayoutSettings()) {
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    state = ReceiptLayoutSettings(
+      paperWidth: prefs.getString('receipt_paper_width') ?? '80mm',
+      showHeader: prefs.getBool('receipt_show_header') ?? true,
+      headerText: prefs.getString('receipt_header_text') ?? '',
+      showFooterText: prefs.getBool('receipt_show_footer') ?? true,
+      footerText: prefs.getString('receipt_footer_text') ?? 'THANK YOU FOR YOUR BUSINESS!',
+      showRefundPolicy: prefs.getBool('receipt_show_refund') ?? false,
+      refundPolicy: prefs.getString('receipt_refund_policy') ?? 'Returns accepted within 7 days with original receipt.',
+      showBarcode: prefs.getBool('receipt_show_barcode') ?? true,
+      showDistributorInfo: prefs.getBool('receipt_show_dist_info') ?? true,
+    );
+  }
+
+  Future<void> saveSettings({
+    required String paperWidth,
+    required bool showHeader,
+    required String headerText,
+    required bool showFooterText,
+    required String footerText,
+    required bool showRefundPolicy,
+    required String refundPolicy,
+    required bool showBarcode,
+    required bool showDistributorInfo,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('receipt_paper_width', paperWidth);
+    await prefs.setBool('receipt_show_header', showHeader);
+    await prefs.setString('receipt_header_text', headerText);
+    await prefs.setBool('receipt_show_footer', showFooterText);
+    await prefs.setString('receipt_footer_text', footerText);
+    await prefs.setBool('receipt_show_refund', showRefundPolicy);
+    await prefs.setString('receipt_refund_policy', refundPolicy);
+    await prefs.setBool('receipt_show_barcode', showBarcode);
+    await prefs.setBool('receipt_show_dist_info', showDistributorInfo);
+
+    state = ReceiptLayoutSettings(
+      paperWidth: paperWidth,
+      showHeader: showHeader,
+      headerText: headerText,
+      showFooterText: showFooterText,
+      footerText: footerText,
+      showRefundPolicy: showRefundPolicy,
+      refundPolicy: refundPolicy,
+      showBarcode: showBarcode,
+      showDistributorInfo: showDistributorInfo,
+    );
+  }
+}
+
+final receiptLayoutSettingsProvider =
+    StateNotifierProvider<ReceiptLayoutSettingsNotifier, ReceiptLayoutSettings>((ref) {
+  return ReceiptLayoutSettingsNotifier();
+});
+

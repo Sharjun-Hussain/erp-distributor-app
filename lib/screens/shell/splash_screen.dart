@@ -79,11 +79,23 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
             ),
             const SizedBox(height: 20),
             const Text(
-              'CoDesk Distribution',
+              'CoDesk DMS',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
+                fontSize: 26,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.5,
+                decoration: TextDecoration.none,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Distribution Management System',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.85),
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.3,
                 decoration: TextDecoration.none,
               ),
             ),

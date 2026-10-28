@@ -37,7 +37,7 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _EditProductPriceSheet(product: product),
+      builder: (_) => EditProductPriceSheet(product: product),
     );
   }
 
@@ -291,16 +291,16 @@ class _CompactProductPriceTile extends StatelessWidget {
 }
 
 /// Interactive Modal Bottom Sheet for editing price with live profit & margin calculations
-class _EditProductPriceSheet extends ConsumerStatefulWidget {
+class EditProductPriceSheet extends ConsumerStatefulWidget {
   final Product product;
 
-  const _EditProductPriceSheet({required this.product});
+  const EditProductPriceSheet({super.key, required this.product});
 
   @override
-  ConsumerState<_EditProductPriceSheet> createState() => _EditProductPriceSheetState();
+  ConsumerState<EditProductPriceSheet> createState() => _EditProductPriceSheetState();
 }
 
-class _EditProductPriceSheetState extends ConsumerState<_EditProductPriceSheet> {
+class _EditProductPriceSheetState extends ConsumerState<EditProductPriceSheet> {
   final Map<String, TextEditingController> _controllers = {};
   bool _saving = false;
 

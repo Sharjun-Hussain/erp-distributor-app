@@ -134,8 +134,8 @@ class MoreScreen extends ConsumerWidget {
                             theme,
                             icon: LucideIcons.printer,
                             iconColor: const Color(0xFF6366F1),
-                            title: 'Printer Setup',
-                            subtitle: 'Bluetooth & LAN thermal receipt settings',
+                            title: 'Printer & Receipt Setup',
+                            subtitle: 'Bluetooth, LAN & Thermal Receipt customization',
                             onTap: () {
                               showModalBottomSheet(
                                 context: context,

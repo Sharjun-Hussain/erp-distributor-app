@@ -37,14 +37,26 @@ class _PrinterSettingsSheetState extends ConsumerState<PrinterSettingsSheet>
   final TextEditingController _portController = TextEditingController(text: '9100');
   String _lanPrinterModel = 'xprinter';
 
+  // Receipt Customization State
+  String _paperWidth = '80mm';
+  bool _showHeader = true;
+  final TextEditingController _headerTextController = TextEditingController();
+  bool _showFooterText = true;
+  final TextEditingController _footerTextController = TextEditingController();
+  bool _showRefundPolicy = false;
+  final TextEditingController _refundPolicyController = TextEditingController();
+  bool _showBarcode = true;
+  bool _showDistributorInfo = true;
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final bt = ref.read(bluetoothPrinterProvider);
       final lan = ref.read(printerSettingsProvider);
+      final rct = ref.read(receiptLayoutSettingsProvider);
 
       setState(() {
         _useBluetooth = bt.useBluetooth;
@@ -56,6 +68,16 @@ class _PrinterSettingsSheetState extends ConsumerState<PrinterSettingsSheet>
         _ipController.text = lan.printerIp;
         _portController.text = lan.printerPort.toString();
         _lanPrinterModel = lan.printerModel;
+
+        _paperWidth = rct.paperWidth;
+        _showHeader = rct.showHeader;
+        _headerTextController.text = rct.headerText;
+        _showFooterText = rct.showFooterText;
+        _footerTextController.text = rct.footerText;
+        _showRefundPolicy = rct.showRefundPolicy;
+        _refundPolicyController.text = rct.refundPolicy;
+        _showBarcode = rct.showBarcode;
+        _showDistributorInfo = rct.showDistributorInfo;
       });
 
       if (_useBluetooth) {
@@ -69,6 +91,9 @@ class _PrinterSettingsSheetState extends ConsumerState<PrinterSettingsSheet>
     _tabController.dispose();
     _ipController.dispose();
     _portController.dispose();
+    _headerTextController.dispose();
+    _footerTextController.dispose();
+    _refundPolicyController.dispose();
     super.dispose();
   }
 
@@ -119,13 +144,26 @@ class _PrinterSettingsSheetState extends ConsumerState<PrinterSettingsSheet>
           _lanPrinterModel,
         );
 
+    // Save Receipt Customization
+    await ref.read(receiptLayoutSettingsProvider.notifier).saveSettings(
+          paperWidth: _paperWidth,
+          showHeader: _showHeader,
+          headerText: _headerTextController.text.trim(),
+          showFooterText: _showFooterText,
+          footerText: _footerTextController.text.trim(),
+          showRefundPolicy: _showRefundPolicy,
+          refundPolicy: _refundPolicyController.text.trim(),
+          showBarcode: _showBarcode,
+          showDistributorInfo: _showDistributorInfo,
+        );
+
     if (!mounted) return;
     toastification.show(
       context: context,
       type: ToastificationType.success,
       style: ToastificationStyle.flat,
-      title: const Text('Printer Settings Saved', style: TextStyle(fontWeight: FontWeight.bold)),
-      description: const Text('Thermal printer preferences updated.'),
+      title: const Text('Printer & Receipt Saved', style: TextStyle(fontWeight: FontWeight.bold)),
+      description: const Text('Thermal printer and receipt preferences updated.'),
       autoCloseDuration: const Duration(seconds: 3),
     );
     Navigator.of(context).pop();
@@ -205,10 +243,11 @@ class _PrinterSettingsSheetState extends ConsumerState<PrinterSettingsSheet>
 
           // Tabs
           Container(
-            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(
               color: theme.surfaceMutedColor,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: TabBar(
               controller: _tabController,
@@ -216,28 +255,38 @@ class _PrinterSettingsSheetState extends ConsumerState<PrinterSettingsSheet>
               dividerColor: Colors.transparent,
               indicator: BoxDecoration(
                 color: theme.cardColor,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 4,
-                    offset: const Offset(0, 2),
+                    offset: const Offset(0, 1),
                   ),
                 ],
               ),
               labelColor: AppColors.brand,
               unselectedLabelColor: theme.textSecondary,
-              labelStyle: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13),
+              labelPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+              labelStyle: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 11.5),
+              unselectedLabelStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 11.5),
               tabs: const [
                 Tab(
+                  height: 38,
                   iconMargin: EdgeInsets.only(bottom: 2),
-                  icon: Icon(LucideIcons.bluetooth, size: 16),
+                  icon: Icon(LucideIcons.bluetooth, size: 14),
                   text: 'Bluetooth',
                 ),
                 Tab(
+                  height: 38,
                   iconMargin: EdgeInsets.only(bottom: 2),
-                  icon: Icon(LucideIcons.wifi, size: 16),
+                  icon: Icon(LucideIcons.wifi, size: 14),
                   text: 'LAN Network',
+                ),
+                Tab(
+                  height: 38,
+                  iconMargin: EdgeInsets.only(bottom: 2),
+                  icon: Icon(LucideIcons.receipt, size: 14),
+                  text: 'Receipt Design',
                 ),
               ],
             ),
@@ -250,6 +299,7 @@ class _PrinterSettingsSheetState extends ConsumerState<PrinterSettingsSheet>
               children: [
                 _buildBluetoothTab(theme),
                 _buildLanTab(theme),
+                _buildReceiptCustomizationTab(theme),
               ],
             ),
           ),
@@ -273,7 +323,7 @@ class _PrinterSettingsSheetState extends ConsumerState<PrinterSettingsSheet>
                 ),
                 onPressed: _saveAllSettings,
                 child: Text(
-                  'Save Printer Settings',
+                  'Save Settings',
                   style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 15),
                 ),
               ),
@@ -490,17 +540,22 @@ class _PrinterSettingsSheetState extends ConsumerState<PrinterSettingsSheet>
           const SizedBox(height: 6),
           TextFormField(
             controller: _ipController,
+            style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500, color: theme.textMain),
             decoration: InputDecoration(
+              isDense: true,
               hintText: 'e.g. 192.168.1.100',
-              prefixIcon: const Icon(LucideIcons.wifi, size: 18),
+              hintStyle: GoogleFonts.inter(fontSize: 12.5, color: theme.textSecondary.withValues(alpha: 0.7)),
+              prefixIcon: const Icon(LucideIcons.wifi, size: 16),
+              prefixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
               filled: true,
               fillColor: theme.surfaceMutedColor,
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(color: theme.glassBorder),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(color: theme.glassBorder),
               ),
             ),
@@ -511,7 +566,7 @@ class _PrinterSettingsSheetState extends ConsumerState<PrinterSettingsSheet>
           Text(
             'PORT (DEFAULT 9100)',
             style: GoogleFonts.inter(
-              fontSize: 11,
+              fontSize: 10.5,
               fontWeight: FontWeight.w800,
               letterSpacing: 0.5,
               color: theme.textSecondary,
@@ -521,17 +576,22 @@ class _PrinterSettingsSheetState extends ConsumerState<PrinterSettingsSheet>
           TextFormField(
             controller: _portController,
             keyboardType: TextInputType.number,
+            style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500, color: theme.textMain),
             decoration: InputDecoration(
+              isDense: true,
               hintText: '9100',
-              prefixIcon: const Icon(LucideIcons.hash, size: 18),
+              hintStyle: GoogleFonts.inter(fontSize: 12.5, color: theme.textSecondary.withValues(alpha: 0.7)),
+              prefixIcon: const Icon(LucideIcons.hash, size: 16),
+              prefixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
               filled: true,
               fillColor: theme.surfaceMutedColor,
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(color: theme.glassBorder),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(color: theme.glassBorder),
               ),
             ),
@@ -590,4 +650,309 @@ class _PrinterSettingsSheetState extends ConsumerState<PrinterSettingsSheet>
       ],
     );
   }
+
+  // ==========================================
+  // RECEIPT CUSTOMIZATION TAB
+  // ==========================================
+  Widget _buildReceiptCustomizationTab(ThemeData theme) {
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      children: [
+        // Paper Width Selector
+        Text(
+          'PAPER WIDTH',
+          style: GoogleFonts.inter(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.8,
+            color: theme.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: () => setState(() => _paperWidth = '58mm'),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  decoration: BoxDecoration(
+                    color: _paperWidth == '58mm'
+                        ? AppColors.brand
+                        : theme.surfaceMutedColor,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: _paperWidth == '58mm'
+                          ? AppColors.brand
+                          : theme.glassBorder,
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        LucideIcons.receipt,
+                        size: 16,
+                        color: _paperWidth == '58mm' ? Colors.white : theme.textSecondary,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '58mm (2-inch)',
+                        style: GoogleFonts.inter(
+                          color: _paperWidth == '58mm' ? Colors.white : theme.textMain,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: GestureDetector(
+                onTap: () => setState(() => _paperWidth = '80mm'),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  decoration: BoxDecoration(
+                    color: _paperWidth == '80mm'
+                        ? AppColors.brand
+                        : theme.surfaceMutedColor,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: _paperWidth == '80mm'
+                          ? AppColors.brand
+                          : theme.glassBorder,
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        LucideIcons.printer,
+                        size: 16,
+                        color: _paperWidth == '80mm' ? Colors.white : theme.textSecondary,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '80mm (3-inch)',
+                        style: GoogleFonts.inter(
+                          color: _paperWidth == '80mm' ? Colors.white : theme.textMain,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+
+        // Section: Header Customization
+        SwitchListTile.adaptive(
+          contentPadding: EdgeInsets.zero,
+          title: Text(
+            'Company Header & Details',
+            style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14, color: theme.textMain),
+          ),
+          subtitle: Text(
+            'Print company name, address and phone',
+            style: GoogleFonts.inter(fontSize: 12, color: theme.textSecondary),
+          ),
+          value: _showHeader,
+          activeTrackColor: AppColors.brand,
+          onChanged: (v) => setState(() => _showHeader = v),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'CUSTOM HEADER SUBTITLE / TAGLINE',
+          style: GoogleFonts.inter(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.5,
+            color: theme.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 6),
+        TextFormField(
+          controller: _headerTextController,
+          style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500, color: theme.textMain),
+          decoration: InputDecoration(
+            isDense: true,
+            hintText: 'e.g. Authorized Wholesale Distributor',
+            hintStyle: GoogleFonts.inter(fontSize: 12.5, color: theme.textSecondary.withValues(alpha: 0.7)),
+            prefixIcon: const Icon(LucideIcons.heading, size: 16),
+            prefixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+            filled: true,
+            fillColor: theme.surfaceMutedColor,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: theme.glassBorder),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: theme.glassBorder),
+            ),
+          ),
+        ),
+
+        const Divider(height: 28),
+
+        // Section: Distributor Information
+        SwitchListTile.adaptive(
+          contentPadding: EdgeInsets.zero,
+          title: Text(
+            'Show Distributor / Sales Rep Info',
+            style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13.5, color: theme.textMain),
+          ),
+          subtitle: Text(
+            'Prints "DISTRIBUTED BY: <Name>" and driver contact on receipt',
+            style: GoogleFonts.inter(fontSize: 11.5, color: theme.textSecondary),
+          ),
+          value: _showDistributorInfo,
+          activeTrackColor: AppColors.brand,
+          onChanged: (v) => setState(() => _showDistributorInfo = v),
+        ),
+
+        // Section: Barcode
+        SwitchListTile.adaptive(
+          contentPadding: EdgeInsets.zero,
+          title: Text(
+            'Embed Invoice Barcode',
+            style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13.5, color: theme.textMain),
+          ),
+          subtitle: Text(
+            'Print Code39 barcode for quick scanner lookups',
+            style: GoogleFonts.inter(fontSize: 11.5, color: theme.textSecondary),
+          ),
+          value: _showBarcode,
+          activeTrackColor: AppColors.brand,
+          onChanged: (v) => setState(() => _showBarcode = v),
+        ),
+
+        const Divider(height: 28),
+
+        // Section: Footer Message
+        SwitchListTile.adaptive(
+          contentPadding: EdgeInsets.zero,
+          title: Text(
+            'Show Appreciation Footer',
+            style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13.5, color: theme.textMain),
+          ),
+          subtitle: Text(
+            'Print appreciation note before receipt cut',
+            style: GoogleFonts.inter(fontSize: 11.5, color: theme.textSecondary),
+          ),
+          value: _showFooterText,
+          activeTrackColor: AppColors.brand,
+          onChanged: (v) => setState(() => _showFooterText = v),
+        ),
+        if (_showFooterText) ...[
+          const SizedBox(height: 6),
+          Text(
+            'FOOTER MESSAGE',
+            style: GoogleFonts.inter(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.5,
+              color: theme.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          TextFormField(
+            controller: _footerTextController,
+            maxLines: 2,
+            style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w500, color: theme.textMain),
+            decoration: InputDecoration(
+              isDense: true,
+              hintText: 'THANK YOU FOR YOUR BUSINESS!',
+              hintStyle: GoogleFonts.inter(fontSize: 12, color: theme.textSecondary.withValues(alpha: 0.7)),
+              prefixIcon: const Padding(
+                padding: EdgeInsets.only(bottom: 20),
+                child: Icon(LucideIcons.messageSquare, size: 16),
+              ),
+              prefixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              filled: true,
+              fillColor: theme.surfaceMutedColor,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: theme.glassBorder),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: theme.glassBorder),
+              ),
+            ),
+          ),
+        ],
+
+        const Divider(height: 28),
+
+        // Section: Refund / Return Policy
+        SwitchListTile.adaptive(
+          contentPadding: EdgeInsets.zero,
+          title: Text(
+            'Print Return / Warranty Policy',
+            style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13.5, color: theme.textMain),
+          ),
+          subtitle: Text(
+            'Print return instructions and expiry terms',
+            style: GoogleFonts.inter(fontSize: 11.5, color: theme.textSecondary),
+          ),
+          value: _showRefundPolicy,
+          activeTrackColor: AppColors.brand,
+          onChanged: (v) => setState(() => _showRefundPolicy = v),
+        ),
+        if (_showRefundPolicy) ...[
+          const SizedBox(height: 6),
+          Text(
+            'TERMS & RETURN POLICY',
+            style: GoogleFonts.inter(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.5,
+              color: theme.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          TextFormField(
+            controller: _refundPolicyController,
+            maxLines: 2,
+            style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w500, color: theme.textMain),
+            decoration: InputDecoration(
+              isDense: true,
+              hintText: 'Returns accepted within 7 days with original receipt.',
+              hintStyle: GoogleFonts.inter(fontSize: 12, color: theme.textSecondary.withValues(alpha: 0.7)),
+              prefixIcon: const Padding(
+                padding: EdgeInsets.only(bottom: 20),
+                child: Icon(LucideIcons.shieldCheck, size: 16),
+              ),
+              prefixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              filled: true,
+              fillColor: theme.surfaceMutedColor,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: theme.glassBorder),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: theme.glassBorder),
+              ),
+            ),
+          ),
+        ],
+        const SizedBox(height: 20),
+      ],
+    );
+  }
 }
+

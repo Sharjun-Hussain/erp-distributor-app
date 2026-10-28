@@ -69,7 +69,7 @@ class DistributorApp extends ConsumerWidget {
 
     return ToastificationWrapper(
       child: MaterialApp.router(
-        title: 'CoDesk Distribution',
+        title: 'CoDesk DMS',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
         darkTheme: AppTheme.dark,

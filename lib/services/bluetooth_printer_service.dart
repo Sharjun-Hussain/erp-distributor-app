@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_bluetooth_serial_plus/flutter_bluetooth_serial_plus.dart';
 
 import '../models/finance.dart';
+import '../providers/printer_providers.dart';
 import '../utils/formatters.dart';
 
 class _EscPosDraft {
@@ -218,37 +219,48 @@ class BluetoothPrinterService {
     required String distName,
     required String distPhone,
     required String printerModel,
+    ReceiptLayoutSettings? receiptLayout,
   }) async {
     if (kIsWeb || address.isEmpty) return false;
 
     try {
+      final layout = receiptLayout ?? const ReceiptLayoutSettings();
       final profile = await CapabilityProfile.load();
-      final draft = _EscPosDraft(PaperSize.mm80, profile);
+      final paperSize = layout.paperWidth == '58mm' ? PaperSize.mm58 : PaperSize.mm80;
+      final draft = _EscPosDraft(paperSize, profile);
 
       // Header
-      _applySam4sAlign(draft, printerModel, PosAlign.center);
-      final headerName = companyName.isNotEmpty ? companyName : 'DISTRIBUTOR ERP';
-      draft.text(
-        headerName.toUpperCase(),
-        styles: const PosStyles(
-          height: PosTextSize.size2,
-          width: PosTextSize.size1,
-          bold: true,
-          align: PosAlign.center,
-        ),
-      );
+      if (layout.showHeader) {
+        _applySam4sAlign(draft, printerModel, PosAlign.center);
+        final headerName = companyName.isNotEmpty ? companyName : 'DISTRIBUTOR ERP';
+        draft.text(
+          headerName.toUpperCase(),
+          styles: const PosStyles(
+            height: PosTextSize.size2,
+            width: PosTextSize.size1,
+            bold: true,
+            align: PosAlign.center,
+          ),
+        );
 
-      if (companyAddress.isNotEmpty) {
-        draft.text(
-          companyAddress.toUpperCase(),
-          styles: const PosStyles(align: PosAlign.center, bold: true),
-        );
-      }
-      if (companyPhone.isNotEmpty) {
-        draft.text(
-          'TEL: $companyPhone',
-          styles: const PosStyles(align: PosAlign.center, bold: true),
-        );
+        if (companyAddress.isNotEmpty) {
+          draft.text(
+            companyAddress.toUpperCase(),
+            styles: const PosStyles(align: PosAlign.center, bold: true),
+          );
+        }
+        if (companyPhone.isNotEmpty) {
+          draft.text(
+            'TEL: $companyPhone',
+            styles: const PosStyles(align: PosAlign.center, bold: true),
+          );
+        }
+        if (layout.headerText.isNotEmpty) {
+          draft.text(
+            layout.headerText,
+            styles: const PosStyles(align: PosAlign.center, bold: true),
+          );
+        }
       }
 
       draft.hr();
@@ -398,7 +410,7 @@ class BluetoothPrinterService {
       draft.hr();
 
       // Distributed By
-      if (distName.isNotEmpty) {
+      if (layout.showDistributorInfo && distName.isNotEmpty) {
         draft.row([
           PosColumn(text: 'DISTRIBUTED BY:', width: 6, styles: const PosStyles(bold: true)),
           PosColumn(
@@ -420,38 +432,46 @@ class BluetoothPrinterService {
         draft.feed(1);
       }
 
-      // Footer
-      _applySam4sAlign(draft, printerModel, PosAlign.center);
-      draft.text(
-        'THANK YOU FOR YOUR BUSINESS!',
-        styles: const PosStyles(
-          align: PosAlign.center,
-          bold: true,
-          height: PosTextSize.size2,
-        ),
-      );
-      draft.feed(1);
-
-      // Barcode
-      try {
-        final cleanInvoice = invoice.invoiceNumber.toUpperCase();
-        draft.barcode(Barcode.code39(cleanInvoice.codeUnits));
-      } catch (_) {
+      // Footer Message
+      if (layout.showFooterText && layout.footerText.isNotEmpty) {
+        _applySam4sAlign(draft, printerModel, PosAlign.center);
         draft.text(
-          invoice.invoiceNumber,
-          styles: const PosStyles(align: PosAlign.center, bold: true),
+          layout.footerText.toUpperCase(),
+          styles: const PosStyles(
+            align: PosAlign.center,
+            bold: true,
+            height: PosTextSize.size1,
+          ),
         );
+        draft.feed(1);
       }
 
-      draft.feed(1);
-      draft.text(
-        'ERP SYSTEM FROM INZEEDO',
-        styles: const PosStyles(align: PosAlign.center, bold: true),
-      );
-      draft.text(
-        '(c) ${DateTime.now().year} INZEEDO.LK | +94785706441',
-        styles: const PosStyles(align: PosAlign.center, bold: true),
-      );
+      // Return / Refund Policy
+      if (layout.showRefundPolicy && layout.refundPolicy.isNotEmpty) {
+        _applySam4sAlign(draft, printerModel, PosAlign.center);
+        draft.text(
+          layout.refundPolicy,
+          styles: const PosStyles(
+            align: PosAlign.center,
+            bold: false,
+          ),
+        );
+        draft.feed(1);
+      }
+
+      // Barcode
+      if (layout.showBarcode) {
+        try {
+          final cleanInvoice = invoice.invoiceNumber.toUpperCase();
+          draft.barcode(Barcode.code39(cleanInvoice.codeUnits));
+        } catch (_) {
+          draft.text(
+            invoice.invoiceNumber,
+            styles: const PosStyles(align: PosAlign.center, bold: true),
+          );
+        }
+        draft.feed(1);
+      }
 
       draft.feed(2);
       draft.cut();

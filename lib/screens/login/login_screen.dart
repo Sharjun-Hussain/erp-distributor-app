@@ -401,7 +401,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         border: Border.all(color: theme.glassBorder),
                       ),
                       child: Text(
-                        'CoDesk Distribution',
+                        'CoDesk DMS',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
@@ -426,7 +426,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Welcome to CoDesk Distribution. Enter your credentials to access your routes and orders securely.',
+                  'Welcome to CoDesk DMS (Distribution Management System). Enter your credentials to access your routes and orders securely.',
                   style: TextStyle(
                     fontSize: 16,
                     height: 1.5,
