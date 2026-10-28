@@ -3,7 +3,9 @@ import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../config/app_config.dart';
 import '../providers/auth_provider.dart';
+import '../providers/shared_preferences_provider.dart';
 import '../screens/catalog/cart_screen.dart';
 import '../screens/catalog/catalog_screen.dart';
 import '../screens/catalog/product_detail_screen.dart';
@@ -26,27 +28,42 @@ import '../screens/shops/shops_screen.dart';
 final rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 
 final routerProvider = Provider<GoRouter>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  final savedToken = prefs.getString(AppConfig.accessTokenKey);
+  final isLoggedIn = savedToken != null && savedToken.isNotEmpty;
+
+  // Determine initial location directly without flashing login screen
+  final initialLocation = isLoggedIn ? '/home' : '/login';
+
   final refresh = ValueNotifier<int>(0);
   ref.listen(authProvider, (_, _) => refresh.value++);
   ref.onDispose(refresh.dispose);
 
   return GoRouter(
     navigatorKey: rootNavigatorKey,
-    initialLocation: '/login',
+    initialLocation: initialLocation,
     refreshListenable: refresh,
     redirect: (context, state) {
       final auth = ref.read(authProvider);
       final loc = state.matchedLocation;
       final onLogin = loc == '/login';
+      final onSetup = loc == '/setup';
 
-      // Still initialising — stay on login (shows the UI immediately).
-      if (auth.status == AuthStatus.unknown) return null;
+      // Check current token in preferences for immediate synchronous truth
+      final currentToken = prefs.getString(AppConfig.accessTokenKey);
+      final hasToken = currentToken != null && currentToken.isNotEmpty;
 
-      if (!auth.isAuthenticated) {
-        return onLogin ? null : '/login';
+      // When logged out or token cleared, force redirect to login
+      if (!hasToken && !auth.isAuthenticated) {
+        if (onLogin || onSetup) return null;
+        return '/login';
       }
-      // Authenticated — bounce away from login.
-      if (onLogin) return '/home';
+
+      // If user is authenticated or has active token and tries to access login
+      if ((hasToken || auth.isAuthenticated) && onLogin) {
+        return '/home';
+      }
+
       return null;
     },
     routes: [

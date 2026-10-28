@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toastification/toastification.dart';
 
 import 'config/app_config.dart';
+import 'providers/shared_preferences_provider.dart';
 import 'router/app_router.dart';
 import 'services/update_service.dart';
 import 'theme/app_theme.dart';
@@ -29,20 +30,18 @@ void main() async {
       const SystemUiOverlayStyle(statusBarColor: Colors.transparent),
     );
 
-    try {
-      final prefs = await SharedPreferences.getInstance()
-          .timeout(const Duration(seconds: 2));
-      final customUrl = prefs.getString(AppConfig.customApiUrlKey);
-      if (customUrl != null && customUrl.isNotEmpty) {
-        AppConfig.setCustomUrl(customUrl);
-      }
-    } catch (_) {
-      // Ignore initialization errors
+    final prefs = await SharedPreferences.getInstance();
+    final customUrl = prefs.getString(AppConfig.customApiUrlKey);
+    if (customUrl != null && customUrl.isNotEmpty) {
+      AppConfig.setCustomUrl(customUrl);
     }
 
     runApp(
-      const ProviderScope(
-        child: DistributorApp(),
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+        ],
+        child: const DistributorApp(),
       ),
     );
   } catch (e, stack) {
